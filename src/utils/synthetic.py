@@ -21,7 +21,7 @@ def _rng(seed: int) -> np.random.Generator:
     return np.random.default_rng(seed)
 
 
-def generate_frame(seed: int = 42, n_ground: int = 60_000) -> np.ndarray:
+def generate_frame(seed: int = 42, n_ground: int = 110_000) -> np.ndarray:
     """Return an ``(N, 4)`` float32 KITTI-style array (x, y, z, intensity).
 
     Deterministic given ``seed``.
@@ -29,9 +29,18 @@ def generate_frame(seed: int = 42, n_ground: int = 60_000) -> np.ndarray:
     rng = _rng(seed)
     parts = []
 
-    # --- Ground plane: spread across +/- range, small z noise around -1.7 m ---
+    # --- Ground plane: small z noise around -1.7 m --------------------------
     # KITTI Velodyne sits ~1.7 m above the road, so ground z ~ -1.7 m.
-    gr = rng.uniform(1.0, 95.0, size=n_ground)          # radial distance
+    #
+    # Density model: a real rotating LiDAR's ground returns are DENSE near the
+    # sensor and get sparser with distance (the ring spacing on the ground grows
+    # with range). We reproduce that by sampling the radial distance from an
+    # exponential-ish distribution concentrated near the vehicle, rather than
+    # uniformly over the disk. This makes the synthetic frame behave like real
+    # LiDAR -- and makes the foveated reduction realistic (coarsening the dense
+    # near-field is where the saving comes from) instead of artificially small.
+    gr = 1.0 + rng.exponential(scale=12.0, size=n_ground)  # concentrated near 0
+    gr = np.clip(gr, 1.0, 95.0)
     gth = rng.uniform(0, 2 * np.pi, size=n_ground)       # angle
     gx = gr * np.cos(gth)
     gy = gr * np.sin(gth)
