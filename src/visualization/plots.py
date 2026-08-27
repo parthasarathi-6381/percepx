@@ -25,6 +25,26 @@ CLASS_COLORS = {
     "unknown": "#7f7f7f",         # gray
 }
 
+# Dashboard design tokens (match dashboard dark theme / UI-UX-Pro-Max palette).
+_FG = "#E5E7EB"       # gray-200 text
+_GRID = "rgba(148,163,184,0.15)"
+
+
+def _apply_theme(fig):
+    """Apply a transparent dark template so charts blend into card surfaces."""
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=_FG, size=13),
+        title_font=dict(color=_FG, size=16),
+        legend=dict(bgcolor="rgba(0,0,0,0)"),
+    )
+    # 2D axes (ignored harmlessly by 3D scenes)
+    fig.update_xaxes(gridcolor=_GRID, zerolinecolor=_GRID)
+    fig.update_yaxes(gridcolor=_GRID, zerolinecolor=_GRID)
+    return fig
+
 
 def _subsample(points: np.ndarray, max_points: int) -> np.ndarray:
     """Return an index array subsampling ``points`` to at most ``max_points``.
@@ -82,7 +102,7 @@ def plot_raw_pointcloud(
         ),
         margin=dict(l=0, r=0, t=40, b=0),
     )
-    return fig
+    return _apply_theme(fig)
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +160,7 @@ def plot_semantic_pointcloud(
         margin=dict(l=0, r=0, t=40, b=0),
         legend=dict(itemsizing="constant"),
     )
-    return fig
+    return _apply_theme(fig)
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +184,7 @@ def plot_grid_map(
     if x.shape[0] == 0:
         fig = go.Figure()
         fig.update_layout(title=f"{title} (empty)")
-        return fig
+        return _apply_theme(fig)
 
     if color_by == "semantic":
         names, colors = class_names_colors(cfg)
@@ -191,7 +211,7 @@ def plot_grid_map(
         yaxis=dict(scaleanchor="x", scaleratio=1),
         margin=dict(l=0, r=0, t=40, b=0),
     )
-    return fig
+    return _apply_theme(fig)
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +238,7 @@ def plot_resolution_zones(policy, title: str = "Foveated Resolution Zones"):
         yaxis=dict(scaleanchor="x", scaleratio=1),
         margin=dict(l=0, r=0, t=40, b=0),
     )
-    return fig
+    return _apply_theme(fig)
 
 
 # ---------------------------------------------------------------------------
@@ -244,4 +264,4 @@ def plot_comparison_bars(benchmark, title: str = "Uniform vs Foveated"):
         fig.add_trace(go.Bar(x=["foveated"], y=[fv], marker_color="#2ca02c",
                              showlegend=(i == 1), name="foveated"), row=1, col=i)
     fig.update_layout(title=title, margin=dict(l=0, r=0, t=60, b=0))
-    return fig
+    return _apply_theme(fig)

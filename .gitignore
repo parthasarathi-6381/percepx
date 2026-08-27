@@ -23,6 +23,12 @@ ENV/
 # ---- Editors / OS ----
 .vscode/
 .idea/
+
+# ---- Installed AI dev-tool skills (UI/UX Pro Max) -- not project source ----
+.claude/
+
+# ---- Streamlit secrets only (config.toml theme IS committed) ----
+.streamlit/secrets.toml
 *.swp
 .DS_Store
 Thumbs.db

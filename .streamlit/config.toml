@@ -1,0 +1,15 @@
+# Streamlit theme derived from the UI/UX Pro Max design tokens
+# (shadcn/Tailwind dark palette). Applied globally to the dashboard.
+[theme]
+base = "dark"
+primaryColor = "#2563EB"            # blue-600  (primary / accent)
+backgroundColor = "#0B0F17"         # near gray-950, slightly warmer
+secondaryBackgroundColor = "#111827" # gray-900  (cards / sidebar)
+textColor = "#E5E7EB"               # gray-200  (foreground)
+font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

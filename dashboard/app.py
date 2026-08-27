@@ -25,7 +25,113 @@ from src.pipeline import Pipeline  # noqa: E402
 from src.utils.synthetic import write_frame  # noqa: E402
 from src.visualization import plots  # noqa: E402
 
-st.set_page_config(page_title="Foveated LiDAR Mapping", layout="wide")
+st.set_page_config(
+    page_title="Foveated LiDAR Mapping",
+    page_icon="🛰️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+# ---------------------------------------------------------------------------
+# Design system (UI/UX Pro Max tokens: shadcn/Tailwind dark palette)
+# Injected as CSS so Streamlit's default widgets pick up the system.
+# ---------------------------------------------------------------------------
+def inject_css() -> None:
+    st.markdown(
+        """
+        <style>
+        :root {
+            --bg:        #0B0F17;   /* app background        */
+            --surface:   #111827;   /* gray-900  card/surface */
+            --surface-2: #1F2937;   /* gray-800  hover/border */
+            --border:    #1F2937;   /* subtle border          */
+            --text:      #E5E7EB;   /* gray-200  foreground   */
+            --muted:     #9CA3AF;   /* gray-400  secondary    */
+            --primary:   #2563EB;   /* blue-600               */
+            --primary-2: #3B82F6;   /* blue-500               */
+            --success:   #22C55E;   /* green-500              */
+            --radius:    0.6rem;
+        }
+
+        /* ---- typography ---- */
+        html, body, [class*="css"] { font-feature-settings: "cv11", "ss01"; }
+        h1, h2, h3 { letter-spacing: -0.015em; font-weight: 700; }
+        .block-container { padding-top: 2.2rem; max-width: 1400px; }
+
+        /* ---- section headers get an accent rule ---- */
+        h2 {
+            border-left: 4px solid var(--primary);
+            padding-left: 0.6rem;
+            margin-top: 1.6rem;
+        }
+
+        /* ---- metric cards: turn flat metrics into bordered tiles ---- */
+        [data-testid="stMetric"] {
+            background: var(--surface);
+            border: 1px solid var(--surface-2);
+            border-radius: var(--radius);
+            padding: 0.9rem 1.1rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+            transition: border-color 0.15s ease, transform 0.15s ease;
+        }
+        [data-testid="stMetric"]:hover {
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+        [data-testid="stMetricValue"] { font-weight: 700; }
+        [data-testid="stMetricLabel"] { color: var(--muted); }
+
+        /* ---- primary button ---- */
+        .stButton > button[kind="primary"] {
+            background: linear-gradient(180deg, var(--primary-2), var(--primary));
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+        }
+        .stButton > button[kind="primary"]:hover { filter: brightness(1.08); }
+
+        /* ---- hero banner (a bordered gradient card) ---- */
+        .hero {
+            background: linear-gradient(135deg,
+                        rgba(37,99,235,0.18), rgba(34,197,94,0.10));
+            border: 1px solid rgba(37,99,235,0.4);
+            border-radius: 0.9rem;
+            padding: 1.1rem 1.4rem;
+            margin: 0.4rem 0 1.2rem 0;
+        }
+        .hero .big {
+            font-size: 1.35rem; font-weight: 700; color: var(--text);
+            line-height: 1.4;
+        }
+        .hero .accent { color: var(--primary-2); }
+        .hero .accent-2 { color: var(--success); }
+
+        /* ---- chips / pills ---- */
+        .pill {
+            display: inline-block; padding: 0.15rem 0.6rem; margin: 0.1rem 0.2rem;
+            border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+            background: var(--surface-2); color: var(--text);
+        }
+
+        /* ---- plotly chart containers get a card frame ---- */
+        [data-testid="stPlotlyChart"] {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.4rem;
+        }
+
+        /* ---- sidebar polish ---- */
+        [data-testid="stSidebar"] { border-right: 1px solid var(--surface-2); }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+inject_css()
 
 
 # ---------------------------------------------------------------------------
@@ -159,10 +265,16 @@ b = result.benchmark
 # ---------------------------------------------------------------------------
 # Hero banner: the headline reduction
 # ---------------------------------------------------------------------------
-st.subheader(
-    f"⚡ Foveated mapping used **{b.cell_reduction_percent:.0f}% fewer cells** "
-    f"and **{b.logical_memory_reduction_percent:.0f}% less map memory** "
-    f"than a uniform 5 cm grid — on the same frame."
+st.markdown(
+    f"""
+    <div class="hero">
+      <div class="big">⚡ Foveated mapping used
+        <span class="accent">{b.cell_reduction_percent:.0f}% fewer cells</span> and
+        <span class="accent-2">{b.logical_memory_reduction_percent:.0f}% less map memory</span>
+        than a uniform 5&nbsp;cm grid — on the same frame.</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------------------------
