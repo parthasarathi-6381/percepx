@@ -1,0 +1,42 @@
+# ==========================================================
+# Foveated LiDAR Mapping - Python dependencies
+# Target: Python 3.10+   (developed/tested on 3.12)
+# ==========================================================
+
+# --- Core numerics (required by everything) ---
+numpy>=1.24,<3.0
+scipy>=1.10
+
+# --- Configuration ---
+PyYAML>=6.0
+
+# --- Performance measurement ---
+psutil>=5.9
+
+# --- Visualization ---
+plotly>=5.18
+matplotlib>=3.7        # secondary / static plots
+
+# --- Dashboard ---
+streamlit>=1.30
+
+# --- Classical ML / clustering (baseline segmenter) ---
+scikit-learn>=1.3
+
+# --- Testing ---
+pytest>=7.4
+
+# ==========================================================
+# OPTIONAL / heavier dependencies.
+# The MVP runs WITHOUT these. Install only when needed.
+# ==========================================================
+#
+# Open3D  - richer 3D point-cloud viz + fast voxel downsampling.
+#           Plotly is used as the default so the MVP has no hard
+#           dependency on Open3D (which can be fiddly on some OSes).
+# open3d>=0.18
+#
+# PyTorch - only required to plug in a real deep-learning segmenter
+#           (PointNet++ / sparse CNN). The baseline segmenter is pure
+#           NumPy/scikit-learn and needs no torch.
+# torch>=2.1

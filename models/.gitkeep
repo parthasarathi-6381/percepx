@@ -1,0 +1,2 @@
+# Pretrained segmentation model weights go here (e.g. PointNet++ checkpoints).
+# Gitignored — download separately. The baseline segmenter needs no weights.

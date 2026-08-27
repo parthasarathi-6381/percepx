@@ -1,0 +1,3 @@
+# Place KITTI / SemanticKITTI .bin LiDAR frames here.
+# Example: data/raw/000000.bin
+# These files are gitignored (see .gitignore) — they are large and dataset-licensed.

@@ -1,0 +1,107 @@
+# ==========================================================
+# Foveated LiDAR Mapping - central configuration
+# ----------------------------------------------------------
+# Everything the pipeline needs is here. Do NOT hard-code
+# these values in Python source; load them from this file.
+# All distances are in METERS, resolutions in METERS/cell.
+# ==========================================================
+
+dataset:
+  # Path to a single KITTI .bin frame OR a directory of frames.
+  # Relative paths are resolved from the project root.
+  # NEVER hard-code an absolute dataset path in source code.
+  input_path: "data/raw"
+  frame_id: "000000"          # base filename (without .bin) for single-frame runs
+  # KITTI Velodyne .bin layout: float32 [N, 4] = (x, y, z, intensity)
+  point_stride: 4             # floats per point in the .bin file
+
+# ----------------------------------------------------------
+# Preprocessing
+# ----------------------------------------------------------
+preprocessing:
+  min_range: 0.0              # meters (radial, on the x-y plane)
+  max_range: 100.0            # meters  -> anything beyond is discarded
+  z_min: -3.0                 # meters  -> vertical crop (below sensor)
+  z_max: 3.0                  # meters  -> vertical crop (above sensor)
+  remove_invalid: true        # drop NaN / Inf points
+  # Optional voxel downsampling of the RAW cloud (independent of mapping).
+  # Set enabled: false to keep every point.
+  voxel_downsample:
+    enabled: false
+    voxel_size: 0.10          # meters
+
+# ----------------------------------------------------------
+# Mapping ranges (zone boundaries). These MUST be consistent
+# with the resolution zones below.
+# ----------------------------------------------------------
+mapping:
+  max_range: 100.0
+  near_range: 10.0            # 0 .. near_range          -> "near"  zone
+  mid_range: 30.0            # near_range .. mid_range  -> "mid"   zone
+  far_range: 60.0            # mid_range  .. far_range  -> "far"   zone
+  # far_range .. max_range   -> "very_far" zone
+  # Height aggregation when multiple points hit one cell.
+  height_aggregation: "max"  # one of: max | mean | min
+  # Confidence aggregation across points in a cell.
+  confidence_aggregation: "mean"  # one of: mean | max
+
+# ----------------------------------------------------------
+# Foveated resolution policy (meters per cell, per zone).
+# Uniform baseline uses `resolution.near` everywhere.
+# ----------------------------------------------------------
+resolution:
+  near: 0.05                 # 0-10 m    -> 5  cm
+  mid: 0.15                  # 10-30 m   -> 15 cm
+  far: 0.30                  # 30-60 m   -> 30 cm
+  very_far: 0.50             # 60-100 m  -> 50 cm
+
+# ----------------------------------------------------------
+# Semantic classes. Order defines the integer class id.
+# Colors are used consistently across all visualizations.
+# ----------------------------------------------------------
+classes:
+  ground:          { id: 0, color: "#2ca02c" }   # green
+  vehicle:         { id: 1, color: "#d62728" }   # red
+  pedestrian:      { id: 2, color: "#ffdd00" }   # yellow
+  static_obstacle: { id: 3, color: "#1f77b4" }   # blue
+  unknown:         { id: 4, color: "#7f7f7f" }   # gray
+
+# ----------------------------------------------------------
+# Segmentation model selection.
+# ----------------------------------------------------------
+segmentation:
+  method: "baseline"         # one of: baseline | pretrained
+  baseline:
+    # Ground-plane detection (RANSAC-style) parameters.
+    ground_z_threshold: 0.20     # meters: |z - plane| below this -> ground
+    ground_max_iterations: 100
+    ground_distance_threshold: 0.20
+    # Clustering (DBSCAN) for non-ground obstacles.
+    cluster_eps: 0.5             # meters
+    cluster_min_points: 10
+  pretrained:
+    # Placeholder for a future PointNet++ / sparse-CNN model.
+    weights_path: "models/pretrained.pth"
+    device: "auto"              # auto | cpu | cuda
+
+# ----------------------------------------------------------
+# Benchmarking
+# ----------------------------------------------------------
+benchmarking:
+  repeat: 1                   # repeat each mapping N times, report best/median
+  measure_process_memory: true
+  bytes_per_cell_estimate: 64  # logical storage estimate per occupied cell
+
+# ----------------------------------------------------------
+# Visualization
+# ----------------------------------------------------------
+visualization:
+  max_points_render: 120000  # subsample above this many points for speed
+  point_size: 1.5
+  backend: "plotly"          # plotly (default) | open3d (optional)
+
+# ----------------------------------------------------------
+# Logging
+# ----------------------------------------------------------
+logging:
+  level: "INFO"              # DEBUG | INFO | WARNING | ERROR
