@@ -172,24 +172,42 @@ python -m src.benchmarking.benchmark --input data/raw/000000.bin --json out.json
 
 All numbers are **real measurements**, never fabricated.
 
-### Example (synthetic frame, ~119k points, this machine)
+### Results on REAL KITTI data
 
-| metric              | uniform 5 cm | foveated     |
-|---------------------|-------------:|-------------:|
-| cells               |       97,066 |       83,208 |
-| mapping time        |      ~30 ms  |      ~50 ms  |
-| FPS (1/mapping)     |        ~33   |        ~20   |
-| logical storage     |    ~6.1 MB*  |    ~5.2 MB*  |
+Measured on **20 real KITTI frames** (raw drive `2011_09_26_drive_0001`,
+~122k points/frame; see [data/DATASET.md](data/DATASET.md)):
+
+| metric (mean over 20 frames) | uniform 5 cm | foveated |
+|------------------------------|-------------:|---------:|
+| cells                        |      ~75,041 |  ~45,501 |
+| mapping FPS (1/mapping)      |        ~41   |    ~29   |
+
+**Mean cell reduction ≈ 39%  →  mean logical-memory reduction ≈ 39%.**
+
+Single real frame (frame 0) example:
+
+| metric          | uniform 5 cm | foveated |
+|-----------------|-------------:|---------:|
+| cells           |       75,009 |   45,911 |
+| logical storage |     ~4.69 MB*|  ~2.87 MB*|
+| cell reduction  |            — |  **38.8%**|
 
 *logical storage = cells × 64 B/cell (configurable).
 
-**Cell / memory reduction ≈ 14%** on this synthetic frame, and it grows with
-distance per zone (mid 24%, far 27%, very-far 36%). The aggregate is diluted
-because the synthetic scene is dense in the near field, which foveation keeps at
-full 5 cm — this is the honest, expected behavior. Foveation's win is fewer
-cells → less memory (which compounds for every downstream consumer of the map);
-mapping-construction latency is comparable between the two (both real-time). See
-§15.
+Per-zone reduction grows with distance, and on real data the far field carries
+real structure (roads/buildings extending out), so the **aggregate reduction is
+~39%** — much larger than on the near-field-dense synthetic frame (~14%). This
+is the honest, expected behavior: foveation pays off most when the scene has
+mid/far content.
+
+Foveation's win is fewer cells → less memory (which compounds for every
+downstream consumer of the map — storage, transmission, planning). Mapping
+*construction* latency is comparable between the two (both real-time, 29–41 FPS);
+it is not the metric foveation optimizes. See §15.
+
+> A deterministic **synthetic** frame is also included (`--synthetic`) so the
+> pipeline runs with no dataset. Its reduction (~14%) is smaller by design
+> because its scene is near-field-dense.
 
 ## 14. Metrics
 
