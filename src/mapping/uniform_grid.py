@@ -130,13 +130,26 @@ class UniformGrid:
         z = pts[:, 2]
 
         # Group points by unique (gx, gy) cell.
-        keys = np.stack([gx, gy], axis=1)
-        uniq, inverse = np.unique(keys, axis=0, return_inverse=True)
-        inverse = inverse.ravel()
-        m = uniq.shape[0]  # number of occupied cells
+        #
+        # Pack (gx, gy) into a single int64 key so we can use the FAST 1-D
+        # np.unique path (sorting one integer column) instead of the much slower
+        # np.unique(axis=0) which lexsorts a 2-column array. Indices can be
+        # negative (sensor at origin), so we offset by the per-axis minimum into
+        # a non-negative range, then bit-pack. This is exact and reversible.
+        gx_min = int(gx.min())
+        gy_min = int(gy.min())
+        ux = (gx - gx_min).astype(np.int64)   # >= 0
+        uy = (gy - gy_min).astype(np.int64)   # >= 0
+        span_y = int(uy.max()) + 1            # number of distinct y rows + 1
+        packed = ux * span_y + uy             # unique per (gx, gy)
 
-        self._gx = uniq[:, 0]
-        self._gy = uniq[:, 1]
+        uniq_keys, inverse = np.unique(packed, return_inverse=True)
+        inverse = inverse.ravel()
+        m = uniq_keys.shape[0]  # number of occupied cells
+
+        # Unpack the winning keys back to integer cell indices.
+        self._gx = (uniq_keys // span_y).astype(np.int64) + gx_min
+        self._gy = (uniq_keys % span_y).astype(np.int64) + gy_min
 
         # point_count per cell
         self._count = np.bincount(inverse, minlength=m).astype(np.int64)

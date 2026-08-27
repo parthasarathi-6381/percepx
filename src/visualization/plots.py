@@ -4,13 +4,13 @@ Plotly is used as the default backend so the MVP has no hard dependency on
 Open3D. Functions here return Plotly ``Figure`` objects; the caller decides
 whether to ``.show()`` them, write HTML, or embed them in Streamlit.
 
-Only the raw point-cloud view is implemented in Phase 2. Semantic / grid
-visualizations are added in later phases.
+Provides: raw cloud, semantic cloud, uniform/foveated 2.5D maps, resolution
+zones, and a uniform-vs-foveated comparison bar chart.
 """
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -82,4 +82,166 @@ def plot_raw_pointcloud(
         ),
         margin=dict(l=0, r=0, t=40, b=0),
     )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Class metadata helpers
+# ---------------------------------------------------------------------------
+def class_names_colors(cfg: Optional[Dict[str, Any]] = None):
+    """Return (names, colors) lists ordered by class id, from config or defaults."""
+    from src.segmentation.classes import CLASS_NAMES, DEFAULT_COLORS
+
+    if not cfg or "classes" not in cfg:
+        names = list(CLASS_NAMES)
+        return names, [DEFAULT_COLORS[n] for n in names]
+    items = sorted(cfg["classes"].items(), key=lambda kv: kv[1].get("id", 0))
+    names = [n for n, _ in items]
+    colors = [m.get("color", DEFAULT_COLORS.get(n, "#7f7f7f")) for n, m in items]
+    return names, colors
+
+
+# ---------------------------------------------------------------------------
+# Semantic point cloud
+# ---------------------------------------------------------------------------
+def plot_semantic_pointcloud(
+    points: np.ndarray,
+    labels: np.ndarray,
+    cfg: Optional[Dict[str, Any]] = None,
+    max_points: int = 120_000,
+    point_size: float = 1.6,
+    title: str = "Semantic LiDAR Point Cloud",
+):
+    """3D scatter colored by semantic class (one trace per class -> legend)."""
+    import plotly.graph_objects as go
+
+    names, colors = class_names_colors(cfg)
+    idx = _subsample(points, max_points)
+    p = points[idx]
+    lab = np.asarray(labels)[idx]
+
+    traces = []
+    for cid, (name, color) in enumerate(zip(names, colors)):
+        m = lab == cid
+        if not m.any():
+            continue
+        traces.append(
+            go.Scatter3d(
+                x=p[m, 0], y=p[m, 1], z=p[m, 2],
+                mode="markers", name=name,
+                marker=dict(size=point_size, color=color, opacity=0.8),
+            )
+        )
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        title=f"{title}  ({len(idx):,} pts)",
+        scene=dict(xaxis_title="x (m)", yaxis_title="y (m)", zaxis_title="z (m)",
+                   aspectmode="data"),
+        margin=dict(l=0, r=0, t=40, b=0),
+        legend=dict(itemsizing="constant"),
+    )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# 2.5D grid map (top-down, colored by elevation or by semantic class)
+# ---------------------------------------------------------------------------
+def plot_grid_map(
+    arrays: Dict[str, np.ndarray],
+    cfg: Optional[Dict[str, Any]] = None,
+    color_by: str = "elevation",
+    title: str = "2.5D Map",
+    marker_size: float = 3.0,
+):
+    """Top-down scatter of occupied cells.
+
+    ``arrays`` is the dict from ``UniformGrid.to_arrays`` /
+    ``FoveatedGrid.to_arrays``. ``color_by`` = 'elevation' | 'semantic'.
+    """
+    import plotly.graph_objects as go
+
+    x, y = arrays["x"], arrays["y"]
+    if x.shape[0] == 0:
+        fig = go.Figure()
+        fig.update_layout(title=f"{title} (empty)")
+        return fig
+
+    if color_by == "semantic":
+        names, colors = class_names_colors(cfg)
+        cls = arrays["semantic_class"]
+        traces = []
+        for cid, (name, color) in enumerate(zip(names, colors)):
+            m = cls == cid
+            if not m.any():
+                continue
+            traces.append(go.Scattergl(
+                x=x[m], y=y[m], mode="markers", name=name,
+                marker=dict(size=marker_size, color=color)))
+        fig = go.Figure(data=traces)
+    else:
+        fig = go.Figure(data=[go.Scattergl(
+            x=x, y=y, mode="markers",
+            marker=dict(size=marker_size, color=arrays["elevation"],
+                        colorscale="Turbo", colorbar=dict(title="elev (m)")),
+        )])
+
+    fig.update_layout(
+        title=f"{title}  ({x.shape[0]:,} cells)",
+        xaxis_title="x (m)", yaxis_title="y (m)",
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        margin=dict(l=0, r=0, t=40, b=0),
+    )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Resolution zones (rings showing where each cell size applies)
+# ---------------------------------------------------------------------------
+def plot_resolution_zones(policy, title: str = "Foveated Resolution Zones"):
+    """Concentric rings illustrating the distance-adaptive resolution."""
+    import plotly.graph_objects as go
+
+    zone_colors = ["#1b9e77", "#7570b3", "#d95f02", "#e7298a"]
+    theta = np.linspace(0, 2 * np.pi, 200)
+    fig = go.Figure()
+    for zi, z in enumerate(policy.zones):
+        c = zone_colors[zi % len(zone_colors)]
+        # outer boundary of the zone
+        fig.add_trace(go.Scatter(
+            x=z.r_hi * np.cos(theta), y=z.r_hi * np.sin(theta),
+            mode="lines", line=dict(color=c, width=2),
+            name=f"{z.name}: {z.r_lo:g}-{z.r_hi:g} m @ {z.resolution*100:g} cm",
+        ))
+    fig.update_layout(
+        title=title,
+        xaxis_title="x (m)", yaxis_title="y (m)",
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        margin=dict(l=0, r=0, t=40, b=0),
+    )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Uniform vs foveated comparison bars
+# ---------------------------------------------------------------------------
+def plot_comparison_bars(benchmark, title: str = "Uniform vs Foveated"):
+    """Grouped bars: cells, logical KB, FPS for uniform vs foveated."""
+    import plotly.graph_objects as go
+
+    u, f = benchmark.uniform, benchmark.foveated
+    metrics = ["cells", "logical KB", "FPS"]
+    uni_vals = [u.num_cells, u.logical_bytes / 1024, u.fps]
+    fov_vals = [f.num_cells, f.logical_bytes / 1024, f.fps]
+
+    # Separate subplots would be cleaner (different scales); use a normalized
+    # grouped bar per metric via facets. Keep it simple: 3 small bar charts.
+    from plotly.subplots import make_subplots
+
+    fig = make_subplots(rows=1, cols=3, subplot_titles=metrics)
+    for i, (uv, fv) in enumerate(zip(uni_vals, fov_vals), start=1):
+        fig.add_trace(go.Bar(x=["uniform"], y=[uv], marker_color="#888",
+                             showlegend=(i == 1), name="uniform"), row=1, col=i)
+        fig.add_trace(go.Bar(x=["foveated"], y=[fv], marker_color="#2ca02c",
+                             showlegend=(i == 1), name="foveated"), row=1, col=i)
+    fig.update_layout(title=title, margin=dict(l=0, r=0, t=60, b=0))
     return fig

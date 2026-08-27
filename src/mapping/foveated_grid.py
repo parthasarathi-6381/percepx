@@ -87,6 +87,12 @@ class FoveatedGrid:
 
         self.discarded_out_of_range += int((zone_idx == -1).sum())
 
+        # Route each zone's points to its own grid. Each mask selects only that
+        # zone's points, so the total aggregation work is ~one pass over the
+        # cloud (fewer, coarser cells in the far zones). Construction latency is
+        # comparable to the uniform grid; foveation's win is in cell count /
+        # memory (see the benchmark), which compounds for any downstream
+        # consumer of the map.
         for zi, zone in enumerate(self.policy.zones):
             mask = zone_idx == zi
             count = int(mask.sum())
