@@ -183,12 +183,26 @@ def inject_css() -> None:
             background: var(--panel);
             border-right: 1px solid var(--rule-2);
         }
-        /* trim the large default whitespace at the top of the sidebar */
-        [data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
-        [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
-            padding-top: 0.5rem;
+        /* --- trim the large default whitespace at the top of the sidebar --- */
+        /* the header row that only holds the collapse (<<) button */
+        [data-testid="stSidebarHeader"] {
+            padding-top: 0.25rem !important;
+            padding-bottom: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
         }
-        [data-testid="stSidebar"] .block-container { padding-top: 1rem; }
+        /* the content wrapper + its inner block container */
+        [data-testid="stSidebarUserContent"] { padding-top: 0 !important; }
+        [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+            padding-top: 0 !important;
+        }
+        [data-testid="stSidebar"] .block-container {
+            padding-top: 0.25rem !important;
+        }
+        /* collapse any empty leading spacer blocks Streamlit injects */
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:empty {
+            display: none !important;
+        }
         /* compact sidebar title + section subheads */
         .side-title {
             font-family: Georgia, "Times New Roman", serif;

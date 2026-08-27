@@ -410,6 +410,88 @@ This is what lets us say **"all numbers are real measurements, never fabricated.
 
 ---
 
+## Part 8.5 — Model strategy & algorithms (train vs. use existing)
+
+> This section answers three questions judges *always* ask: **what AI model do
+> you use, what algorithms, and did you train it yourself?** Read this before the
+> pitch — the decision here is deliberate, not accidental.
+
+### 8.5.1 The full algorithm inventory
+
+**Classical algorithms in the working MVP (no neural network yet):**
+
+| Stage | Algorithm | Family | Code |
+|---|---|---|---|
+| Ground / drivable surface | **RANSAC plane fit** (custom NumPy) + horizontality check | Robust geometric fitting | [baseline_segmenter.py](src/segmentation/baseline_segmenter.py) `_fit_ground` |
+| Object grouping | **DBSCAN** density clustering + voxel-downsample speedup | Unsupervised clustering | `_cluster` |
+| Object classification | **Rule-based geometry** (footprint + height thresholds) | Heuristic decision rules | `_classify_cluster` |
+| Cell aggregation | **Vectorized group-by** (`np.unique` int64-packing + `bincount`/`ufunc.at`) | Numeric scatter-reduce | [uniform_grid.py](src/mapping/uniform_grid.py) `insert` |
+| Distance → zone | **`searchsorted`** on inclusive edges | Numeric bucketing | [resolution_policy.py](src/mapping/resolution_policy.py) `assign_zones` |
+| Class-per-cell | **Vote-by-confidence argmax** | Weighted voting | `uniform_grid.py` |
+
+**Proposed deep-learning model (the "AI" deliverable):** a point-cloud semantic
+segmentation network, dropped into `PretrainedSegmenter`
+([pretrained_segmenter.py](src/segmentation/pretrained_segmenter.py)) — which
+already implements the `BaseSegmenter` interface, so it needs **zero changes to
+the mapping engine**. Candidates:
+
+| Model | Real-time? | CPU-friendly? | Why / why not |
+|---|---|---|---|
+| **PointNet++** | Marginal (~1–3 s / 100k pts on CPU) | **Yes** (pure PyTorch) | Named in the SIH statement; runnable without CUDA — our CPU-viable choice |
+| **Sparse CNN** (MinkowskiNet / SPVCNN / SpConv) | **Yes** (fast) | No (needs CUDA) | SOTA on outdoor LiDAR; *exploits sparsity — same principle as our sparse grid* |
+| RandLA-Net | Yes | Partly | Efficient for large outdoor clouds; less "famous" to judges |
+| Cylinder3D | Yes | No | SOTA leaderboard model; heavier than we need for an MVP |
+
+### 8.5.2 The decision: **use a pretrained model, do NOT train our own**
+
+**Why not train from scratch:**
+- Training PointNet/Sparse-CNN on SemanticKITTI is a **commoditized** exercise —
+  hundreds of teams do it. It is the *least novel* part of any LiDAR project.
+- On limited/no GPU, a from-scratch model almost always **underperforms published
+  weights** — you'd present a *worse* result *and* burn your scarce time on it.
+- We have **no local GPU infra**, so multi-day training is off the table anyway.
+
+**Why pretrained wins:** SIH judges reward **one sharp, defensible novel idea,
+proven with real numbers, presented cleanly** — not "we trained a model." Our
+novelty is the **foveated adaptive 2.5D grid**, so the winning move is to treat
+segmentation as a **swappable, pretrained component**: satisfy the DL requirement
+cheaply, and pour effort into the foveation + measured-memory-win + demo.
+
+> **Framing that maximizes win probability:** *"Segmentation is a plug-in; the
+> adaptive foveated 2.5D data structure is the contribution."* — but still show a
+> **real DL model running** so no judge can say we skipped the AI requirement.
+
+### 8.5.3 The concrete plan (fits: no GPU infra, no training)
+
+We use a **hybrid demo** that is both honest and impressive:
+
+1. **DL evidence (offline, on free cloud GPU):** run a pretrained
+   **Sparse CNN** (SemanticKITTI checkpoint) on a handful of KITTI frames using a
+   **free Colab/Kaggle GPU session** (a few hours is plenty for *inference*).
+   Save the SOTA-quality per-point labels. Map its ~19 SemanticKITTI classes down
+   to our **5** (`ground / vehicle / pedestrian / static_obstacle / unknown`).
+2. **Live demo (on any laptop, CPU):** keep the fast **geometric prototype** as
+   the default segmenter for the Streamlit dashboard, so nothing during judging
+   depends on a GPU being present.
+3. **The seam that makes this honest:** both the DL output and the prototype
+   output are a `SegmentationResult` flowing through the **same** foveated mapping
+   engine ([base_segmenter.py](src/segmentation/base_segmenter.py)). We can show
+   the identical map built from *either* label source — proving the model is truly
+   a drop-in and the novelty (the grid) is independent of it.
+
+**Fallback if even Colab is unavailable:** use **PointNet++ pretrained weights on
+CPU** for a slow-but-real DL frame in the writeup, and keep the prototype live.
+Either way we can point at a real network, not a stub.
+
+### 8.5.4 One-liner for the pitch
+> *"We don't train a model — we use a pretrained Sparse CNN, because our
+> contribution isn't the segmenter, it's the foveated 2.5D data structure the
+> labels flow into. The network is a drop-in; the adaptive grid is the idea. And
+> the whole pipeline is built on one principle — exploit sparsity — from the
+> sparse-conv network down to the sparse foveated map."*
+
+---
+
 ## Part 9 — Honest limitations (state these before a judge does)
 - Baseline segmenter is a **geometric prototype**, not a trained network (flagged
   everywhere). Accuracy is "reasonable heuristic", not SOTA.
