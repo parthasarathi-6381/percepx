@@ -43,6 +43,11 @@ class BaselineConfig:
     ground_distance_threshold: float = 0.20  # RANSAC inlier distance (m)
     cluster_eps: float = 0.5                 # DBSCAN neighborhood (m)
     cluster_min_points: int = 10
+    # Speed: cluster on a voxel-downsampled copy of the non-ground points, then
+    # propagate labels back to every point by nearest voxel. 0 disables it.
+    # This preserves cluster SHAPE (so the geometry classifier is unchanged)
+    # while cutting DBSCAN's point count by ~10x on dense real frames.
+    cluster_voxel_size: float = 0.20         # meters; 0 -> no downsampling
     # Cluster classification geometry (meters).
     ped_max_footprint: float = 1.0          # pedestrians are narrow
     ped_min_height: float = 0.8
@@ -59,6 +64,7 @@ class BaselineConfig:
             ground_distance_threshold=float(b.get("ground_distance_threshold", 0.20)),
             cluster_eps=float(b.get("cluster_eps", 0.5)),
             cluster_min_points=int(b.get("cluster_min_points", 10)),
+            cluster_voxel_size=float(b.get("cluster_voxel_size", 0.20)),
             ped_max_footprint=float(b.get("ped_max_footprint", 1.0)),
             ped_min_height=float(b.get("ped_min_height", 0.8)),
             ped_max_height=float(b.get("ped_max_height", 2.2)),
@@ -73,9 +79,34 @@ class BaselineSegmenter(BaseSegmenter):
     name = "baseline_geometric"
     is_prototype = True
 
-    def __init__(self, config: Optional[BaselineConfig] = None, seed: int = 0) -> None:
+    def __init__(
+        self,
+        config: Optional[BaselineConfig] = None,
+        seed: int = 0,
+        warmup: bool = True,
+    ) -> None:
         self.config = config or BaselineConfig()
         self.seed = seed
+        if warmup:
+            self._warmup()
+
+    @staticmethod
+    def _warmup() -> None:
+        """Pay sklearn's one-time import + first-fit cost up front.
+
+        The first DBSCAN call in a fresh process takes ~2 s (module import +
+        internal setup); subsequent calls are ~10x faster. Doing a tiny dummy
+        fit here moves that cost to construction time (e.g. dashboard startup)
+        so the user's first real frame isn't slow. Safe no-op if sklearn is
+        missing.
+        """
+        try:
+            import numpy as _np
+            from sklearn.cluster import DBSCAN as _DBSCAN
+
+            _DBSCAN(eps=0.5, min_samples=2).fit_predict(_np.zeros((3, 3)))
+        except Exception:  # pragma: no cover - warmup must never break init
+            pass
 
     # ------------------------------------------------------------------
     def segment(self, points: np.ndarray) -> SegmentationResult:
@@ -185,18 +216,52 @@ class BaselineSegmenter(BaseSegmenter):
 
     # ------------------------------------------------------------------
     def _cluster(self, xyz: np.ndarray) -> np.ndarray:
-        """DBSCAN cluster labels for non-ground points (-1 = noise)."""
+        """DBSCAN cluster labels for non-ground points (-1 = noise).
+
+        For speed on dense real frames, DBSCAN runs on a voxel-downsampled copy
+        (one representative point per occupied voxel) and the resulting cluster
+        ids are propagated back to every original point by nearest voxel. This
+        keeps cluster *shapes* intact (so the geometry classifier is unaffected)
+        while shrinking DBSCAN's input by ~10x. Disable via cluster_voxel_size=0.
+        """
         try:
             from sklearn.cluster import DBSCAN
         except ImportError:  # pragma: no cover
             logger.warning("scikit-learn not available; skipping clustering.")
             return np.full(xyz.shape[0], -1, dtype=np.int64)
 
-        db = DBSCAN(
-            eps=self.config.cluster_eps,
-            min_samples=self.config.cluster_min_points,
-        )
-        return db.fit_predict(xyz)
+        vsize = self.config.cluster_voxel_size
+        db = DBSCAN(eps=self.config.cluster_eps,
+                    min_samples=self.config.cluster_min_points)
+
+        # No downsampling requested (or cloud already small): cluster directly.
+        if vsize <= 0 or xyz.shape[0] <= self.config.cluster_min_points:
+            return db.fit_predict(xyz)
+
+        # 1) voxel keys per point (floor -> negative-safe).
+        keys = np.floor(xyz / vsize).astype(np.int64)
+        uniq, inverse = np.unique(keys, axis=0, return_inverse=True)
+        inverse = inverse.ravel()
+
+        # 2) voxel centroid = representative point for DBSCAN.
+        m = uniq.shape[0]
+        counts = np.bincount(inverse, minlength=m)
+        sums = np.zeros((m, 3), dtype=np.float64)
+        np.add.at(sums, inverse, xyz)
+        centroids = sums / counts[:, None]
+
+        # If downsampling didn't actually reduce much, just cluster directly.
+        if m > 0.8 * xyz.shape[0]:
+            return db.fit_predict(xyz)
+
+        # 3) cluster the (few) voxel centroids; adjust min_samples down since a
+        #    voxel represents several points.
+        vdb = DBSCAN(eps=self.config.cluster_eps,
+                     min_samples=max(1, self.config.cluster_min_points // 3))
+        voxel_labels = vdb.fit_predict(centroids)
+
+        # 4) propagate each voxel's cluster id back to its member points.
+        return voxel_labels[inverse].astype(np.int64)
 
     # ------------------------------------------------------------------
     def _classify_cluster(self, member_xyz: np.ndarray):

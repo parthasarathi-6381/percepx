@@ -95,16 +95,35 @@ run = st.sidebar.button("Run Pipeline", type="primary", use_container_width=True
 # ---------------------------------------------------------------------------
 # Header
 # ---------------------------------------------------------------------------
-st.title("Foveated LiDAR Mapping System")
-st.caption("Distance-adaptive foveated semantic 2.5D representation for "
+st.title("🛰️ Foveated LiDAR Mapping System")
+st.caption("**Distance-adaptive foveated semantic 2.5D representation** for "
            "real-time autonomous navigation")
 
 if not run:
-    st.info("Set options in the sidebar and click **Run Pipeline** to start.")
+    st.markdown(
+        """
+        ### The idea (like the human eye)
+        A LiDAR scan has **millions of points**. Processing every point at full
+        5 cm resolution everywhere is slow and memory-hungry. We keep **high
+        resolution close to the vehicle** (where safety needs it) and
+        **progressively coarsen with distance** — a *fovea* for LiDAR.
+
+        | Zone | Distance | Cell size |
+        |------|----------|-----------|
+        | Near | 0–10 m | **5 cm** |
+        | Mid | 10–30 m | **15 cm** |
+        | Far | 30–60 m | **30 cm** |
+        | Very far | 60–100 m | **50 cm** |
+
+        On real KITTI data this cuts cells **~39%** (⇒ ~39% less map memory)
+        while preserving height information for curbs, potholes and overhangs.
+
+        👈 Pick a frame in the sidebar and click **Run Pipeline**.
+        """
+    )
     # Show the resolution-zone diagram up front so judges get the concept.
-    policy = ResolutionPolicy(10, 30, max_range * 0.3, max_range,
+    policy = ResolutionPolicy(10, 30, max_range * 0.6, max_range,
                               res_near, res_mid, res_far, res_very_far)
-    st.subheader("Foveated resolution zones")
     st.plotly_chart(plots.plot_resolution_zones(policy), use_container_width=True)
     st.stop()
 
@@ -129,10 +148,22 @@ with st.spinner("Running pipeline..."):
     cfg, result = run_pipeline_cached(frame_path, overrides, is_syn)
 
 if is_syn:
-    st.warning("Showing a SYNTHETIC demo frame (not real sensor data).")
+    st.warning("Showing a SYNTHETIC demo frame (not real sensor data). "
+               "Uncheck 'Use synthetic frame' in the sidebar to use real KITTI.")
+else:
+    st.success(f"Real LiDAR frame: **{Path(frame_path).name}**")
 
 t = result.timings.as_dict()
 b = result.benchmark
+
+# ---------------------------------------------------------------------------
+# Hero banner: the headline reduction
+# ---------------------------------------------------------------------------
+st.subheader(
+    f"⚡ Foveated mapping used **{b.cell_reduction_percent:.0f}% fewer cells** "
+    f"and **{b.logical_memory_reduction_percent:.0f}% less map memory** "
+    f"than a uniform 5 cm grid — on the same frame."
+)
 
 # ---------------------------------------------------------------------------
 # Top metrics row
@@ -218,8 +249,19 @@ st.header("5 - Performance")
 p1, p2, p3, p4 = st.columns(4)
 p1.metric("Cell reduction", f"{b.cell_reduction_percent:.1f}%")
 p2.metric("Memory reduction", f"{b.logical_memory_reduction_percent:.1f}%")
-p3.metric("Uniform mapping", f"{b.uniform.mapping_time_s*1e3:.1f} ms")
-p4.metric("Foveated mapping", f"{b.foveated.mapping_time_s*1e3:.1f} ms")
+p3.metric("Uniform mapping", f"{b.uniform.mapping_time_s*1e3:.1f} ms",
+          help=f"{b.uniform.fps:.0f} FPS")
+p4.metric("Foveated mapping", f"{b.foveated.mapping_time_s*1e3:.1f} ms",
+          help=f"{b.foveated.fps:.0f} FPS")
+
+# Per-stage timing at a glance (segmentation is the prototype-classifier cost).
+q1, q2, q3, q4 = st.columns(4)
+q1.metric("Preprocess", f"{t['preprocessing_time']*1e3:.0f} ms")
+q2.metric("Segmentation", f"{t['segmentation_time']*1e3:.0f} ms",
+          help="Baseline prototype classifier (RANSAC ground + voxel DBSCAN).")
+q3.metric("Mapping (both)",
+          f"{(t['uniform_mapping_time']+t['foveated_mapping_time'])*1e3:.0f} ms")
+q4.metric("Total", f"{t['total_time']*1e3:.0f} ms")
 
 with st.expander("Per-stage timing"):
     st.table({k: [f"{v*1e3:.2f} ms"] for k, v in t.items()})

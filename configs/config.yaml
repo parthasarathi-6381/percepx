@@ -79,6 +79,10 @@ segmentation:
     # Clustering (DBSCAN) for non-ground obstacles.
     cluster_eps: 0.5             # meters
     cluster_min_points: 10
+    # Cluster on a voxel-downsampled copy of non-ground points for speed, then
+    # propagate labels back to all points. Preserves cluster shape; ~10x fewer
+    # points into DBSCAN on dense frames. Set to 0 to cluster every point.
+    cluster_voxel_size: 0.20     # meters
     # Cluster classification geometry (meters). Simple, explainable rules.
     ped_max_footprint: 1.0       # pedestrians are narrow
     ped_min_height: 0.8

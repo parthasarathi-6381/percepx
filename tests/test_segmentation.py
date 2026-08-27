@@ -31,12 +31,12 @@ def test_result_num_points():
 # BaselineSegmenter basics
 # ---------------------------------------------------------------------------
 def test_baseline_is_prototype():
-    seg = BaselineSegmenter()
+    seg = BaselineSegmenter(warmup=False)
     assert seg.is_prototype is True
 
 
 def test_baseline_empty_cloud():
-    seg = BaselineSegmenter()
+    seg = BaselineSegmenter(warmup=False)
     res = seg.segment(np.empty((0, 3)))
     assert res.num_points == 0
 
@@ -111,6 +111,46 @@ def test_baseline_tall_pole_is_static_obstacle():
     # and essentially none should be pedestrian
     frac_ped = (pole_labels == CLASS_ID["pedestrian"]).mean()
     assert frac_ped < 0.1
+
+
+def test_cluster_downsampling_preserves_object_class():
+    # A car-sized cluster classified the same with and without voxel clustering.
+    from src.segmentation.baseline_segmenter import BaselineConfig
+
+    rng = np.random.default_rng(7)
+    n_g = 4000
+    gx = rng.uniform(-20, 20, n_g); gy = rng.uniform(-20, 20, n_g)
+    gz = np.full(n_g, -1.7) + rng.normal(0, 0.01, n_g)
+    ground = np.column_stack([gx, gy, gz])
+    # car: ~4 m x 1.8 m footprint, ~1.5 m tall
+    n_c = 1500
+    cx = 8 + rng.uniform(-2, 2, n_c); cy = 3 + rng.uniform(-0.9, 0.9, n_c)
+    cz = rng.uniform(-1.5, 0.0, n_c)
+    car = np.column_stack([cx, cy, cz])
+    pts = np.vstack([ground, car])
+
+    slow = BaselineSegmenter(BaselineConfig(cluster_voxel_size=0.0)).segment(pts)
+    fast = BaselineSegmenter(BaselineConfig(cluster_voxel_size=0.20)).segment(pts)
+
+    # The car region should be non-ground under both, with the same majority
+    # class (vehicle).
+    def majority(labels):
+        car_labels = labels[n_g:]
+        vals, counts = np.unique(car_labels, return_counts=True)
+        return vals[np.argmax(counts)]
+
+    assert majority(slow.labels) == majority(fast.labels)
+    assert majority(fast.labels) == CLASS_ID["vehicle"]
+
+
+def test_cluster_voxel_disabled_still_works():
+    from src.segmentation.baseline_segmenter import BaselineConfig
+
+    rng = np.random.default_rng(8)
+    pts = rng.uniform(-10, 10, size=(600, 3))
+    res = BaselineSegmenter(BaselineConfig(cluster_voxel_size=0.0)).segment(pts)
+    assert res.num_points == 600
+    assert res.labels.min() >= 0 and res.labels.max() <= 4
 
 
 # ---------------------------------------------------------------------------
