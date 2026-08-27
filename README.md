@@ -128,37 +128,68 @@ everything immediately:
 python -m src.utils.synthetic --out data/raw/synthetic_000000.bin
 ```
 
-## 11. Running the pipeline (current state)
+## 11. Running the pipeline
 
-Phase 2/3 smoke script — load ONE frame, preprocess, and write an interactive
-3D HTML view:
+Full pipeline (load → preprocess → segment → uniform map → foveated map →
+benchmark), with per-stage timing:
 
 ```bash
 # real KITTI frame
-python -m scripts.load_and_visualize --input data/raw/000000.bin
+python -m src.pipeline --input data/raw/000000.bin
 
-# or generate + use a synthetic frame (no dataset needed)
+# or a deterministic synthetic frame (no dataset needed)
+python -m src.pipeline --synthetic
+
+# also write interactive HTML views + a JSON summary
+python -m src.pipeline --input data/raw/000000.bin --viz --json outputs/run.json
+```
+
+There is also a lightweight Phase-2/3 smoke script (load + preprocess + raw view):
+
+```bash
 python -m scripts.load_and_visualize --synthetic
 ```
 
-Output: `outputs/raw_pointcloud.html` (open in a browser).
-
-> The full `python -m src.pipeline` CLI, `benchmark`, and `streamlit run
-> dashboard/app.py` commands arrive in later phases (see Roadmap).
-
 ## 12. Running the dashboard
-
-_Coming in Phase 9._ Will be:
 
 ```bash
 streamlit run dashboard/app.py
 ```
 
+Then pick a frame (or "Use synthetic frame"), set options, and click
+**Run Pipeline**. Sections: raw cloud → semantic cloud → foveated 2.5D map →
+uniform-vs-foveated → performance metrics. No Python knowledge needed.
+
 ## 13. Benchmarking
 
-_Coming in Phase 8._ Will compare a uniform 5 cm grid against the foveated grid
-on the same frame(s): cell count, memory, mapping latency, total latency, FPS —
-using **real measurements**, never fabricated.
+Compare a uniform 5 cm grid against the foveated grid on the same frame(s):
+
+```bash
+python -m src.benchmarking.benchmark --synthetic
+python -m src.benchmarking.benchmark --input data/raw/          # a directory
+python -m src.benchmarking.benchmark --input data/raw/000000.bin --json out.json
+```
+
+All numbers are **real measurements**, never fabricated.
+
+### Example (synthetic frame, ~119k points, this machine)
+
+| metric              | uniform 5 cm | foveated     |
+|---------------------|-------------:|-------------:|
+| cells               |       97,066 |       83,208 |
+| mapping time        |      ~30 ms  |      ~50 ms  |
+| FPS (1/mapping)     |        ~33   |        ~20   |
+| logical storage     |    ~6.1 MB*  |    ~5.2 MB*  |
+
+*logical storage = cells × 64 B/cell (configurable).
+
+**Cell / memory reduction ≈ 14%** on this synthetic frame, and it grows with
+distance per zone (mid 24%, far 27%, very-far 36%). The aggregate is diluted
+because the synthetic scene is dense in the near field, which foveation keeps at
+full 5 cm — this is the honest, expected behavior. Foveation's win is fewer
+cells → less memory (which compounds for every downstream consumer of the map);
+mapping-construction latency is comparable between the two (both real-time). See
+§15.
 
 ## 14. Metrics
 
@@ -169,11 +200,21 @@ logical per-cell storage estimate.
 
 ## 15. Limitations (current)
 
-- Baseline segmenter is a **geometric prototype**, not a trained network.
+- Baseline segmenter is a **geometric prototype** (RANSAC ground + DBSCAN +
+  geometry rules), not a trained network. Honestly flagged everywhere.
+- **DBSCAN segmentation is the runtime bottleneck** (~2 s on a 119k-point
+  frame, ~85% of total time). It is a *classifier* cost, not a *mapping* cost;
+  slated for the Phase-11 optimization pass (or replaced by a trained model).
+- Foveated cell/memory reduction depends on the scene: it is largest when the
+  mid/far field carries structure. On near-field-dense frames the aggregate is
+  modest (~14%) even though every zone individually shrinks.
+- Foveated map **construction latency** is comparable to (not faster than)
+  uniform — foveation optimizes cell count / memory, not build speed.
 - Synthetic frames are for development/demo, clearly labeled — not real sensor
-  data.
-- Only single-frame processing is wired end-to-end so far (by design — Phase 2
-  first).
+  data. The loader is format-identical for real KITTI `.bin`, so swapping in a
+  real frame requires no code change.
+- Single-frame pipeline is fully wired; multi-frame is supported by the
+  benchmark CLI (directory input) and aggregate metrics.
 
 ## 16. Future improvements
 
@@ -193,16 +234,16 @@ foveated-lidar/
 ├── models/                      # pretrained weights (gitignored)
 ├── src/
 │   ├── config.py                # config loader + path resolver + logging
-│   ├── preprocessing/           # LiDAR loader + preprocessing        [DONE]
-│   ├── segmentation/            # base / baseline / pretrained         [Phase 6]
-│   ├── mapping/                 # cell, uniform, policy, foveated       [Phase 4-5]
-│   ├── benchmarking/            # benchmark                             [Phase 8]
-│   ├── visualization/           # plots (raw done; more later)         [in progress]
-│   ├── utils/synthetic.py       # deterministic synthetic frames       [DONE]
-│   └── pipeline.py              # end-to-end CLI                        [Phase 9]
-├── scripts/load_and_visualize.py  # Phase 2/3 smoke script            [DONE]
-├── dashboard/app.py             # Streamlit demo                        [Phase 9]
-├── tests/                       # unit tests                            [growing]
+│   ├── preprocessing/           # LiDAR loader + preprocessing
+│   ├── segmentation/            # base / baseline / pretrained + classes + factory
+│   ├── mapping/                 # cell, uniform_grid, resolution_policy, foveated_grid, semantic_map
+│   ├── benchmarking/            # benchmark + CLI (__main__)
+│   ├── visualization/           # plots (raw, semantic, grid, zones, comparison)
+│   ├── utils/synthetic.py       # deterministic synthetic frames
+│   └── pipeline.py              # end-to-end pipeline + CLI
+├── scripts/load_and_visualize.py  # Phase 2/3 smoke script
+├── dashboard/app.py             # Streamlit demo dashboard
+├── tests/                       # 90+ unit + integration tests
 ├── requirements.txt
 └── README.md
 ```
@@ -214,14 +255,14 @@ foveated-lidar/
 | 1 | Setup, structure, config | ✅ done |
 | 2 | LiDAR loader + visualize one frame | ✅ done |
 | 3 | Preprocessing (range/z filter, invalid removal, voxel) | ✅ done |
-| 4 | Uniform 2.5D grid | ⏳ next |
-| 5 | Foveated grid + resolution policy | ⏳ |
-| 6 | Baseline semantic segmenter | ⏳ |
-| 7 | Semantic 2.5D map | ⏳ |
-| 8 | Benchmark (memory, cells, latency, FPS) | ⏳ |
-| 9 | Streamlit dashboard | ⏳ |
-| 10 | Full test + integration suite | ⏳ |
-| 11 | Optimization | ⏳ |
+| 4 | Uniform 2.5D grid | ✅ done |
+| 5 | Foveated grid + resolution policy | ✅ done |
+| 6 | Baseline semantic segmenter (+ pretrained stub) | ✅ done |
+| 7 | Semantic 2.5D map | ✅ done |
+| 8 | Benchmark (memory, cells, latency, FPS) | ✅ done |
+| 9 | Central pipeline + visualizations + Streamlit dashboard | ✅ done |
+| 10 | Full test + integration suite (90+ tests) | ✅ done |
+| 11 | Optimization (DBSCAN segmentation) | ⏳ next |
 
 ## Tests
 
