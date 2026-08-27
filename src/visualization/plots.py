@@ -222,25 +222,42 @@ def plot_grid_map(
 # ---------------------------------------------------------------------------
 # Resolution zones (rings showing where each cell size applies)
 # ---------------------------------------------------------------------------
-def plot_resolution_zones(policy, title: str = "Foveated Resolution Zones"):
-    """Concentric rings illustrating the distance-adaptive resolution."""
+def plot_resolution_zones(policy, title: str = "Foveated resolution zones"):
+    """Filled concentric bands illustrating distance-adaptive resolution.
+
+    Report palette: a single ink hue, darkest (dense) near the sensor and
+    fading outward (coarse) -- so the 'fovea' idea reads at a glance.
+    """
     import plotly.graph_objects as go
 
-    zone_colors = ["#1b9e77", "#7570b3", "#d95f02", "#e7298a"]
-    theta = np.linspace(0, 2 * np.pi, 200)
+    theta = np.linspace(0, 2 * np.pi, 240)
+    # Ink with decreasing opacity outward: near = solid, very-far = faint.
+    fills = ["rgba(26,26,26,0.85)", "rgba(26,26,26,0.55)",
+             "rgba(26,26,26,0.30)", "rgba(26,26,26,0.14)"]
     fig = go.Figure()
-    for zi, z in enumerate(policy.zones):
-        c = zone_colors[zi % len(zone_colors)]
-        # outer boundary of the zone
+    # Draw largest ring first so inner (denser) rings paint on top.
+    for zi in range(len(policy.zones) - 1, -1, -1):
+        z = policy.zones[zi]
         fig.add_trace(go.Scatter(
             x=z.r_hi * np.cos(theta), y=z.r_hi * np.sin(theta),
-            mode="lines", line=dict(color=c, width=2),
-            name=f"{z.name}: {z.r_lo:g}-{z.r_hi:g} m @ {z.resolution*100:g} cm",
+            mode="lines", fill="toself",
+            fillcolor=fills[zi % len(fills)],
+            line=dict(color="rgba(26,26,26,0.9)", width=1),
+            name=f"{z.name} · {z.r_lo:g}–{z.r_hi:g} m · {z.resolution*100:g} cm",
+            hoverinfo="name",
         ))
+    # Sensor / vehicle marker at the origin.
+    fig.add_trace(go.Scatter(
+        x=[0], y=[0], mode="markers+text",
+        marker=dict(color="#ffffff", size=9, line=dict(color="#1a1a1a", width=2)),
+        text=["vehicle"], textposition="top center",
+        textfont=dict(color="#1a1a1a", size=11), showlegend=False, hoverinfo="skip",
+    ))
     fig.update_layout(
         title=title,
         xaxis_title="x (m)", yaxis_title="y (m)",
         yaxis=dict(scaleanchor="x", scaleratio=1),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.18, x=0),
         margin=dict(l=0, r=0, t=40, b=0),
     )
     return _apply_theme(fig)

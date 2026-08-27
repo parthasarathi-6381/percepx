@@ -138,6 +138,40 @@ def inject_css() -> None:
             font-family: -apple-system,"Segoe UI",Roboto,sans-serif;
         }
 
+        /* ---- landing stat cards (outcome at a glance, no prose) ---- */
+        .statcard {
+            border: 1px solid var(--rule);
+            border-top: 3px solid var(--ink);
+            padding: 1.1rem 1.2rem 1rem;
+            height: 100%;
+        }
+        .statcard .num {
+            font-family: "SF Mono","Consolas","Liberation Mono",monospace;
+            font-size: 2.2rem; font-weight: 600; color: var(--ink); line-height: 1;
+        }
+        .statcard .cap {
+            font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em;
+            color: var(--muted); margin-top: 0.5rem;
+            font-family: -apple-system,"Segoe UI",Roboto,sans-serif;
+        }
+
+        /* ---- compact zone table (Swiss ruled) ---- */
+        table.zones { width: 100%; border-collapse: collapse; margin-top: 0.2rem; }
+        table.zones th, table.zones td {
+            text-align: left; padding: 0.5rem 0.4rem;
+            border-bottom: 1px solid var(--rule);
+            font-family: -apple-system,"Segoe UI",Roboto,sans-serif; font-size: 0.9rem;
+        }
+        table.zones th {
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+            color: var(--muted); border-bottom: 1px solid var(--rule-2);
+        }
+        table.zones td.cell {
+            font-family: "SF Mono","Consolas",monospace; text-align: right;
+            font-weight: 600;
+        }
+        table.zones td.dist { color: var(--muted); }
+
         /* ---- plotly charts: no card frame, just a hairline top rule ---- */
         [data-testid="stPlotlyChart"] {
             border-top: 1px solid var(--rule);
@@ -233,34 +267,42 @@ st.caption("Distance-adaptive foveated semantic 2.5D representation for "
            "real-time autonomous navigation")
 
 if not run:
-    st.markdown(
-        """
-        #### Concept
+    # Outcome at a glance -- three stat cards, no prose.
+    s1, s2, s3 = st.columns(3)
+    s1.markdown(
+        '<div class="statcard"><div class="num">~39%</div>'
+        '<div class="cap">Fewer map cells</div></div>', unsafe_allow_html=True)
+    s2.markdown(
+        '<div class="statcard"><div class="num">~39%</div>'
+        '<div class="cap">Less map memory</div></div>', unsafe_allow_html=True)
+    s3.markdown(
+        '<div class="statcard"><div class="num">2.5D</div>'
+        '<div class="cap">Height preserved</div></div>', unsafe_allow_html=True)
 
-        A LiDAR scan contains millions of 3D points. Processing every point at a
-        uniform 5&nbsp;cm resolution is computationally and memory expensive.
-        Inspired by the *fovea* of the human eye, this system preserves high
-        resolution near the vehicle — where precision is safety-critical — and
-        progressively reduces resolution with distance.
+    st.markdown("")  # spacer
 
-        | Zone | Distance | Cell size |
-        |------|----------|-----------|
-        | Near | 0–10 m | 5 cm |
-        | Mid | 10–30 m | 15 cm |
-        | Far | 30–60 m | 30 cm |
-        | Very far | 60–100 m | 50 cm |
-
-        On real KITTI data this reduces cell count by ~39% — and map memory by
-        the same — while retaining the height information needed for curbs,
-        potholes, and overhanging obstacles.
-
-        Select a frame in the sidebar and run the pipeline to begin.
-        """
-    )
-    # Show the resolution-zone diagram up front so judges get the concept.
-    policy = ResolutionPolicy(10, 30, max_range * 0.6, max_range,
-                              res_near, res_mid, res_far, res_very_far)
-    st.plotly_chart(plots.plot_resolution_zones(policy), use_container_width=True)
+    # Zone diagram + compact zone table, side by side (visual, not paragraphs).
+    left, right = st.columns([1.5, 1])
+    with left:
+        policy = ResolutionPolicy(10, 30, max_range * 0.6, max_range,
+                                  res_near, res_mid, res_far, res_very_far)
+        st.plotly_chart(plots.plot_resolution_zones(policy),
+                        use_container_width=True)
+    with right:
+        st.markdown("##### Resolution zones")
+        st.markdown(
+            f"""
+            <table class="zones">
+              <tr><th>Zone</th><th>Distance</th><th style="text-align:right">Cell</th></tr>
+              <tr><td>Near</td><td class="dist">0–10 m</td><td class="cell">{res_near*100:g} cm</td></tr>
+              <tr><td>Mid</td><td class="dist">10–30 m</td><td class="cell">{res_mid*100:g} cm</td></tr>
+              <tr><td>Far</td><td class="dist">30–60 m</td><td class="cell">{res_far*100:g} cm</td></tr>
+              <tr><td>Very far</td><td class="dist">60–100 m</td><td class="cell">{res_very_far*100:g} cm</td></tr>
+            </table>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.caption("Select a frame in the sidebar → **Run Pipeline**.")
     st.stop()
 
 
