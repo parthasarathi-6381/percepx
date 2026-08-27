@@ -183,6 +183,22 @@ def inject_css() -> None:
             background: var(--panel);
             border-right: 1px solid var(--rule-2);
         }
+        /* trim the large default whitespace at the top of the sidebar */
+        [data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
+        [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+            padding-top: 0.5rem;
+        }
+        [data-testid="stSidebar"] .block-container { padding-top: 1rem; }
+        /* compact sidebar title + section subheads */
+        .side-title {
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 1.35rem; font-weight: 600; color: var(--ink);
+            padding-bottom: 0.35rem; margin-bottom: 0.6rem;
+            border-bottom: 2px solid var(--ink);
+        }
+        [data-testid="stSidebar"] h3 {
+            font-size: 1rem; margin-top: 1.1rem; margin-bottom: 0.2rem;
+        }
 
         /* mono for inline "frame name" style code */
         code { font-family: "SF Mono","Consolas",monospace; background: var(--panel); }
@@ -225,24 +241,22 @@ def run_pipeline_cached(frame_path: str, overrides: dict, is_synthetic: bool):
 # ---------------------------------------------------------------------------
 # Sidebar controls
 # ---------------------------------------------------------------------------
-st.sidebar.title("Controls")
+st.sidebar.markdown(
+    '<div class="side-title">Controls</div>', unsafe_allow_html=True)
 
 frames = list_frames()
 frame_labels = [f.name for f in frames]
 
-use_synth = st.sidebar.checkbox(
-    "Use synthetic frame", value=len(frames) == 0,
-    help="Generate a deterministic demo frame (no KITTI dataset required).",
-)
-
+# Use the real KITTI frames in data/raw/. If none exist, fall back silently to
+# a generated synthetic frame (keeps the demo working with no dataset).
 selected_frame = None
-if not use_synth:
-    if frame_labels:
-        choice = st.sidebar.selectbox("LiDAR frame (data/raw/*.bin)", frame_labels)
-        selected_frame = frames[frame_labels.index(choice)]
-    else:
-        st.sidebar.info("No .bin frames in data/raw/. Using synthetic frame.")
-        use_synth = True
+if frame_labels:
+    use_synth = False
+    choice = st.sidebar.selectbox("LiDAR frame (data/raw/*.bin)", frame_labels)
+    selected_frame = frames[frame_labels.index(choice)]
+else:
+    use_synth = True
+    st.sidebar.info("No .bin frames in data/raw/ — using a synthetic demo frame.")
 
 st.sidebar.markdown("### Mapping range")
 max_range = st.sidebar.slider("Max range (m)", 20, 120, 100, 5)
@@ -327,7 +341,7 @@ with st.spinner("Running pipeline..."):
 
 if is_syn:
     st.warning("Showing a SYNTHETIC demo frame (not real sensor data). "
-               "Uncheck 'Use synthetic frame' in the sidebar to use real KITTI.")
+               "Add KITTI .bin frames to data/raw/ to use real data.")
 else:
     st.success(f"Real LiDAR frame: **{Path(frame_path).name}**")
 
