@@ -79,6 +79,12 @@ segmentation:
     # Clustering (DBSCAN) for non-ground obstacles.
     cluster_eps: 0.5             # meters
     cluster_min_points: 10
+    # Cluster classification geometry (meters). Simple, explainable rules.
+    ped_max_footprint: 1.0       # pedestrians are narrow
+    ped_min_height: 0.8
+    ped_max_height: 2.2          # people are not taller than this
+    vehicle_max_footprint: 6.0   # car/van footprint
+    vehicle_max_height: 2.2
   pretrained:
     # Placeholder for a future PointNet++ / sparse-CNN model.
     weights_path: "models/pretrained.pth"
