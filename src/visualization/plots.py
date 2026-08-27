@@ -25,24 +25,29 @@ CLASS_COLORS = {
     "unknown": "#7f7f7f",         # gray
 }
 
-# Dashboard design tokens (match dashboard dark theme / UI-UX-Pro-Max palette).
-_FG = "#E5E7EB"       # gray-200 text
-_GRID = "rgba(148,163,184,0.15)"
+# Dashboard design tokens -- "Clean light / report" (Swiss / minimalist).
+_INK = "#1a1a1a"                 # near-black text
+_MUTED = "#6b6b6b"               # axis labels
+_GRID = "rgba(0,0,0,0.06)"       # faint hairline grid
+_PANEL = "rgba(0,0,0,0)"         # transparent so it sits on white paper
 
 
 def _apply_theme(fig):
-    """Apply a transparent dark template so charts blend into card surfaces."""
+    """Apply a clean light 'report' template (white paper, hairline grid, ink text)."""
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=_FG, size=13),
-        title_font=dict(color=_FG, size=16),
-        legend=dict(bgcolor="rgba(0,0,0,0)"),
+        template="plotly_white",
+        paper_bgcolor=_PANEL,
+        plot_bgcolor=_PANEL,
+        font=dict(color=_INK, size=13,
+                  family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"),
+        title_font=dict(color=_INK, size=15, family="Georgia, Times New Roman, serif"),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=_MUTED)),
     )
     # 2D axes (ignored harmlessly by 3D scenes)
-    fig.update_xaxes(gridcolor=_GRID, zerolinecolor=_GRID)
-    fig.update_yaxes(gridcolor=_GRID, zerolinecolor=_GRID)
+    fig.update_xaxes(gridcolor=_GRID, zerolinecolor=_GRID,
+                     linecolor="#cfccc5", tickfont=dict(color=_MUTED))
+    fig.update_yaxes(gridcolor=_GRID, zerolinecolor=_GRID,
+                     linecolor="#cfccc5", tickfont=dict(color=_MUTED))
     return fig
 
 
@@ -257,11 +262,14 @@ def plot_comparison_bars(benchmark, title: str = "Uniform vs Foveated"):
     # grouped bar per metric via facets. Keep it simple: 3 small bar charts.
     from plotly.subplots import make_subplots
 
+    # Swiss/report palette: uniform = muted gray (baseline), foveated = ink.
+    uni_color, fov_color = "#c9c6bf", "#1a1a1a"
     fig = make_subplots(rows=1, cols=3, subplot_titles=metrics)
     for i, (uv, fv) in enumerate(zip(uni_vals, fov_vals), start=1):
-        fig.add_trace(go.Bar(x=["uniform"], y=[uv], marker_color="#888",
+        fig.add_trace(go.Bar(x=["uniform"], y=[uv], marker_color=uni_color,
                              showlegend=(i == 1), name="uniform"), row=1, col=i)
-        fig.add_trace(go.Bar(x=["foveated"], y=[fv], marker_color="#2ca02c",
+        fig.add_trace(go.Bar(x=["foveated"], y=[fv], marker_color=fov_color,
                              showlegend=(i == 1), name="foveated"), row=1, col=i)
-    fig.update_layout(title=title, margin=dict(l=0, r=0, t=60, b=0))
+    fig.update_layout(title=title, margin=dict(l=0, r=0, t=60, b=0),
+                      bargap=0.35)
     return _apply_theme(fig)

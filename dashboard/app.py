@@ -34,97 +34,124 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------------------------
-# Design system (UI/UX Pro Max tokens: shadcn/Tailwind dark palette)
-# Injected as CSS so Streamlit's default widgets pick up the system.
+# Design system -- "Clean light / report" (Swiss / Minimalist typographic style)
+# Light paper, near-black ink, hairline gray rules, generous whitespace, ONE
+# restrained accent. No gradients, no hover-lift, no colored hero. Numbers set
+# in a monospace so metrics read like a lab/measurement report.
 # ---------------------------------------------------------------------------
 def inject_css() -> None:
     st.markdown(
         """
         <style>
         :root {
-            --bg:        #0B0F17;   /* app background        */
-            --surface:   #111827;   /* gray-900  card/surface */
-            --surface-2: #1F2937;   /* gray-800  hover/border */
-            --border:    #1F2937;   /* subtle border          */
-            --text:      #E5E7EB;   /* gray-200  foreground   */
-            --muted:     #9CA3AF;   /* gray-400  secondary    */
-            --primary:   #2563EB;   /* blue-600               */
-            --primary-2: #3B82F6;   /* blue-500               */
-            --success:   #22C55E;   /* green-500              */
-            --radius:    0.6rem;
+            --paper:   #ffffff;
+            --panel:   #faf9f7;   /* faint warm gray for slight separation */
+            --ink:     #1a1a1a;   /* near-black body text                  */
+            --muted:   #6b6b6b;   /* secondary labels                      */
+            --rule:    #e2e0db;   /* hairline dividers / borders           */
+            --rule-2:  #cfccc5;   /* slightly stronger rule                */
+            --accent:  #1a1a1a;   /* accent = ink (Swiss restraint)        */
         }
 
-        /* ---- typography ---- */
-        html, body, [class*="css"] { font-feature-settings: "cv11", "ss01"; }
-        h1, h2, h3 { letter-spacing: -0.015em; font-weight: 700; }
-        .block-container { padding-top: 2.2rem; max-width: 1400px; }
+        html, body, [class*="css"] { color: var(--ink); }
+        .block-container { padding-top: 2.4rem; max-width: 1180px; }
 
-        /* ---- section headers get an accent rule ---- */
-        h2 {
-            border-left: 4px solid var(--primary);
-            padding-left: 0.6rem;
-            margin-top: 1.6rem;
-        }
-
-        /* ---- metric cards: turn flat metrics into bordered tiles ---- */
-        [data-testid="stMetric"] {
-            background: var(--surface);
-            border: 1px solid var(--surface-2);
-            border-radius: var(--radius);
-            padding: 0.9rem 1.1rem;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.4);
-            transition: border-color 0.15s ease, transform 0.15s ease;
-        }
-        [data-testid="stMetric"]:hover {
-            border-color: var(--primary);
-            transform: translateY(-1px);
-        }
-        [data-testid="stMetricValue"] { font-weight: 700; }
-        [data-testid="stMetricLabel"] { color: var(--muted); }
-
-        /* ---- primary button ---- */
-        .stButton > button[kind="primary"] {
-            background: linear-gradient(180deg, var(--primary-2), var(--primary));
-            border: none;
-            border-radius: var(--radius);
+        /* ---- typography: serif display headings, sans body, mono numbers ---- */
+        h1, h2, h3, h4 {
+            font-family: Georgia, "Times New Roman", serif;
+            color: var(--ink);
             font-weight: 600;
-            box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+            letter-spacing: -0.01em;
         }
-        .stButton > button[kind="primary"]:hover { filter: brightness(1.08); }
-
-        /* ---- hero banner (a bordered gradient card) ---- */
-        .hero {
-            background: linear-gradient(135deg,
-                        rgba(37,99,235,0.18), rgba(34,197,94,0.10));
-            border: 1px solid rgba(37,99,235,0.4);
-            border-radius: 0.9rem;
-            padding: 1.1rem 1.4rem;
-            margin: 0.4rem 0 1.2rem 0;
-        }
-        .hero .big {
-            font-size: 1.35rem; font-weight: 700; color: var(--text);
-            line-height: 1.4;
-        }
-        .hero .accent { color: var(--primary-2); }
-        .hero .accent-2 { color: var(--success); }
-
-        /* ---- chips / pills ---- */
-        .pill {
-            display: inline-block; padding: 0.15rem 0.6rem; margin: 0.1rem 0.2rem;
-            border-radius: 999px; font-size: 0.8rem; font-weight: 600;
-            background: var(--surface-2); color: var(--text);
+        h1 { font-size: 2.1rem; line-height: 1.15; }
+        .stMarkdown p, .stMarkdown li, label, .stCaption {
+            font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* ---- plotly chart containers get a card frame ---- */
+        /* ---- title rule: a thin line under the H1, like a paper masthead ---- */
+        h1 { padding-bottom: 0.5rem; border-bottom: 2px solid var(--ink); }
+
+        /* ---- section headers: small-caps label + hairline rule ---- */
+        h2 {
+            font-size: 1.15rem;
+            text-transform: none;
+            margin-top: 2.2rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 1px solid var(--rule-2);
+        }
+
+        /* ---- metrics: flat, ruled tiles; VALUES in monospace ---- */
+        [data-testid="stMetric"] {
+            background: var(--paper);
+            border: none;
+            border-top: 1px solid var(--rule);
+            border-radius: 0;
+            padding: 0.7rem 0.9rem 0.7rem 0;
+        }
+        [data-testid="stMetricValue"] {
+            font-family: "SF Mono", "Consolas", "Liberation Mono", monospace;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        [data-testid="stMetricLabel"] {
+            color: var(--muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        [data-testid="stMetricDelta"] { font-family: "SF Mono","Consolas",monospace; }
+
+        /* ---- primary button: solid ink, square, no gradient/shadow ---- */
+        .stButton > button[kind="primary"] {
+            background: var(--ink);
+            color: var(--paper);
+            border: 1px solid var(--ink);
+            border-radius: 3px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            box-shadow: none;
+        }
+        .stButton > button[kind="primary"]:hover {
+            background: #000; color: #fff;
+        }
+
+        /* ---- headline result: a bordered "figure box", not a gradient hero -- */
+        .figbox {
+            border: 1px solid var(--rule-2);
+            border-left: 3px solid var(--ink);
+            background: var(--panel);
+            padding: 1rem 1.3rem;
+            margin: 0.6rem 0 1.4rem 0;
+        }
+        .figbox .label {
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--muted);
+            font-family: -apple-system,"Segoe UI",Roboto,sans-serif;
+        }
+        .figbox .stat {
+            font-family: "SF Mono","Consolas","Liberation Mono",monospace;
+            font-size: 1.9rem; font-weight: 600; color: var(--ink);
+            line-height: 1.25; margin-top: 0.2rem;
+        }
+        .figbox .sub {
+            color: var(--muted); font-size: 0.9rem; margin-top: 0.15rem;
+            font-family: -apple-system,"Segoe UI",Roboto,sans-serif;
+        }
+
+        /* ---- plotly charts: no card frame, just a hairline top rule ---- */
         [data-testid="stPlotlyChart"] {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 0.4rem;
+            border-top: 1px solid var(--rule);
+            padding-top: 0.5rem;
         }
 
-        /* ---- sidebar polish ---- */
-        [data-testid="stSidebar"] { border-right: 1px solid var(--surface-2); }
+        /* ---- sidebar: paper with a hairline divider ---- */
+        [data-testid="stSidebar"] {
+            background: var(--panel);
+            border-right: 1px solid var(--rule-2);
+        }
+
+        /* mono for inline "frame name" style code */
+        code { font-family: "SF Mono","Consolas",monospace; background: var(--panel); }
         </style>
         """,
         unsafe_allow_html=True,
@@ -201,30 +228,33 @@ run = st.sidebar.button("Run Pipeline", type="primary", use_container_width=True
 # ---------------------------------------------------------------------------
 # Header
 # ---------------------------------------------------------------------------
-st.title("🛰️ Foveated LiDAR Mapping System")
-st.caption("**Distance-adaptive foveated semantic 2.5D representation** for "
+st.title("Foveated LiDAR Mapping")
+st.caption("Distance-adaptive foveated semantic 2.5D representation for "
            "real-time autonomous navigation")
 
 if not run:
     st.markdown(
         """
-        ### The idea (like the human eye)
-        A LiDAR scan has **millions of points**. Processing every point at full
-        5 cm resolution everywhere is slow and memory-hungry. We keep **high
-        resolution close to the vehicle** (where safety needs it) and
-        **progressively coarsen with distance** — a *fovea* for LiDAR.
+        #### Concept
+
+        A LiDAR scan contains millions of 3D points. Processing every point at a
+        uniform 5&nbsp;cm resolution is computationally and memory expensive.
+        Inspired by the *fovea* of the human eye, this system preserves high
+        resolution near the vehicle — where precision is safety-critical — and
+        progressively reduces resolution with distance.
 
         | Zone | Distance | Cell size |
         |------|----------|-----------|
-        | Near | 0–10 m | **5 cm** |
-        | Mid | 10–30 m | **15 cm** |
-        | Far | 30–60 m | **30 cm** |
-        | Very far | 60–100 m | **50 cm** |
+        | Near | 0–10 m | 5 cm |
+        | Mid | 10–30 m | 15 cm |
+        | Far | 30–60 m | 30 cm |
+        | Very far | 60–100 m | 50 cm |
 
-        On real KITTI data this cuts cells **~39%** (⇒ ~39% less map memory)
-        while preserving height information for curbs, potholes and overhangs.
+        On real KITTI data this reduces cell count by ~39% — and map memory by
+        the same — while retaining the height information needed for curbs,
+        potholes, and overhanging obstacles.
 
-        👈 Pick a frame in the sidebar and click **Run Pipeline**.
+        Select a frame in the sidebar and run the pipeline to begin.
         """
     )
     # Show the resolution-zone diagram up front so judges get the concept.
@@ -267,11 +297,12 @@ b = result.benchmark
 # ---------------------------------------------------------------------------
 st.markdown(
     f"""
-    <div class="hero">
-      <div class="big">⚡ Foveated mapping used
-        <span class="accent">{b.cell_reduction_percent:.0f}% fewer cells</span> and
-        <span class="accent-2">{b.logical_memory_reduction_percent:.0f}% less map memory</span>
-        than a uniform 5&nbsp;cm grid — on the same frame.</div>
+    <div class="figbox">
+      <div class="label">Key result &middot; foveated vs. uniform 5&nbsp;cm grid, same frame</div>
+      <div class="stat">&minus;{b.cell_reduction_percent:.1f}% cells &nbsp;&middot;&nbsp;
+        &minus;{b.logical_memory_reduction_percent:.1f}% map memory</div>
+      <div class="sub">{b.uniform.num_cells:,} &rarr; {b.foveated.num_cells:,} occupied cells,
+        with full 5&nbsp;cm detail retained in the near field.</div>
     </div>
     """,
     unsafe_allow_html=True,

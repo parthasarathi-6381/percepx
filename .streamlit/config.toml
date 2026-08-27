@@ -1,12 +1,12 @@
-# Streamlit theme derived from the UI/UX Pro Max design tokens
-# (shadcn/Tailwind dark palette). Applied globally to the dashboard.
+# Streamlit theme -- "Clean light / report" (Swiss / Minimalist style).
+# Light background, near-black ink, restrained neutral grays, one calm accent.
 [theme]
-base = "dark"
-primaryColor = "#2563EB"            # blue-600  (primary / accent)
-backgroundColor = "#0B0F17"         # near gray-950, slightly warmer
-secondaryBackgroundColor = "#111827" # gray-900  (cards / sidebar)
-textColor = "#E5E7EB"               # gray-200  (foreground)
-font = "sans serif"
+base = "light"
+primaryColor = "#1a1a1a"             # ink -- accent is near-black, not a bright hue
+backgroundColor = "#ffffff"          # paper
+secondaryBackgroundColor = "#f6f6f4" # faint warm gray (cards / sidebar)
+textColor = "#1a1a1a"                # near-black ink
+font = "serif"
 
 [server]
 headless = true
