@@ -18,7 +18,10 @@ plotly>=5.18
 matplotlib>=3.7        # secondary / static plots
 
 # --- Dashboard ---
-streamlit>=1.30
+streamlit>=1.37       # >=1.37 for @st.fragment(run_every=...) live auto-refresh
+
+# --- Grove Beginner Kit environmental sensors (Arduino serial bridge) ---
+pyserial>=3.5
 
 # --- Classical ML / clustering (baseline segmenter) ---
 scikit-learn>=1.3

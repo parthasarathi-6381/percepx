@@ -40,6 +40,10 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Live environmental-sensor snapshot/history written by the serial bridge.
+data/live/*
+!data/live/.gitkeep
+
 # Pretrained model weights
 models/*
 !models/.gitkeep

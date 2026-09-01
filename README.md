@@ -243,13 +243,53 @@ implemented in the MVP.
 
 ---
 
+## 17. Environmental sensor monitoring (Grove Beginner Kit)
+
+Rain, fog, smoke and dust distort a real LiDAR return (beam scattering /
+attenuation). A physical Grove Beginner Kit + one added analog air-quality
+sensor gives proxy signals for those conditions, classified into
+**good / moderate / bad** and shown live on a separate dashboard page.
+
+| Sensor (Grove Beginner Kit) | Pin  | Proxy for |
+|---|---|---|
+| Humidity (AHT20/DHT20)      | I2C (0x38) | Fog / rain likelihood |
+| Air pressure (BMP280)       | I2C (0x77, falls back to 0x76) | A fast drop signals incoming rain/storm |
+| Sound sensor                | A2   | Rain on surfaces / wind noise |
+| 3-axis accelerometer (LIS3DHTR) | I2C (0x19) | Wind / mount instability (vibration) |
+| Air Quality Sensor v1.3 *(added)* | A0 *(wired into the Sound Sensor's original socket; the on-board potentiometer was removed to make room)* | Smoke / dust / VOCs |
+| OLED display 0.96"          | I2C  | On-device readout of every sensor at once, no laptop required |
+
+**Setup:**
+
+```bash
+# 1. Flash the sketch (Arduino IDE) -- see the header comment in the .ino
+#    for the exact library list.
+arduino/env_lidar_monitor/env_lidar_monitor.ino
+
+# 2. Run the serial bridge (separate terminal, project root, venv active)
+python -m src.env_sensors.serial_bridge --port COM20
+
+# 3. Open the dashboard -- the new page polls the bridge's live snapshot
+streamlit run dashboard/app.py
+# -> sidebar page "Environmental Sensors"
+```
+
+All thresholds live in `configs/config.yaml` under `environmental_sensors`
+(never hard-coded), and the overall verdict is the *worst* rating among the
+five proxy signals. These are honest proxies from a low-cost hobby kit, not
+calibrated meteorological instruments — retune the limits against your own
+deployment site before trusting the verdict operationally.
+
+---
+
 ## Project layout
 
 ```
 foveated-lidar/
 ├── configs/config.yaml          # all parameters (paths, ranges, resolutions)
-├── data/{raw,processed}/        # frames in, maps out (gitignored)
+├── data/{raw,processed,live}/   # frames in, maps out, live sensor snapshot (gitignored)
 ├── models/                      # pretrained weights (gitignored)
+├── arduino/env_lidar_monitor/   # Grove Beginner Kit sketch (env sensors -> serial JSON)
 ├── src/
 │   ├── config.py                # config loader + path resolver + logging
 │   ├── preprocessing/           # LiDAR loader + preprocessing
@@ -257,10 +297,14 @@ foveated-lidar/
 │   ├── mapping/                 # cell, uniform_grid, resolution_policy, foveated_grid, semantic_map
 │   ├── benchmarking/            # benchmark + CLI (__main__)
 │   ├── visualization/           # plots (raw, semantic, grid, zones, comparison)
+│   ├── env_sensors/             # good/moderate/bad classifier + Arduino serial bridge
 │   ├── utils/synthetic.py       # deterministic synthetic frames
 │   └── pipeline.py              # end-to-end pipeline + CLI
 ├── scripts/load_and_visualize.py  # Phase 2/3 smoke script
-├── dashboard/app.py             # Streamlit demo dashboard
+├── dashboard/
+│   ├── app.py                   # Streamlit demo dashboard (main page)
+│   ├── theme.py                 # shared CSS design system for every page
+│   └── pages/                   # Environmental Sensors (live monitoring page)
 ├── tests/                       # 90+ unit + integration tests
 ├── requirements.txt
 └── README.md
