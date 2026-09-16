@@ -34,164 +34,205 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------------------------
-# Design system -- "Clean light / report" (Swiss / Minimalist typographic style)
-# Light paper, near-black ink, hairline gray rules, generous whitespace, ONE
-# restrained accent. No gradients, no hover-lift, no colored hero. Numbers set
-# in a monospace so metrics read like a lab/measurement report.
+# Design system -- "Data-Dense Dashboard" (blue/amber analytics theme).
+# Light slate surfaces, deep-blue ink for structure, amber reserved for the
+# one headline result so it pops against an otherwise calm, technical UI.
+# Fira Sans for text, Fira Code for every number so metrics stay tabular.
 # ---------------------------------------------------------------------------
 def inject_css() -> None:
     st.markdown(
         """
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap');
+
         :root {
-            --paper:   #ffffff;
-            --panel:   #faf9f7;   /* faint warm gray for slight separation */
-            --ink:     #1a1a1a;   /* near-black body text                  */
-            --muted:   #6b6b6b;   /* secondary labels                      */
-            --rule:    #e2e0db;   /* hairline dividers / borders           */
-            --rule-2:  #cfccc5;   /* slightly stronger rule                */
-            --accent:  #1a1a1a;   /* accent = ink (Swiss restraint)        */
+            --bg:        #F8FAFC;   /* app background, cool light slate      */
+            --card:      #FFFFFF;   /* panels / metric tiles                 */
+            --primary:   #1E40AF;   /* deep blue -- headings, structure      */
+            --primary-2: #3B82F6;   /* lighter blue -- links, secondary emph */
+            --accent:    #D97706;   /* amber -- the ONE headline result      */
+            --accent-bg: #FFFBEB;   /* warm amber tint for the hero panel    */
+            --ink:       #1E3A8A;   /* headings                              */
+            --text:      #0F172A;   /* body text                             */
+            --muted:     #475569;   /* secondary labels                      */
+            --border:    #DBEAFE;   /* blue-tinted hairline                  */
+            --border-2:  #BFDBFE;   /* stronger border                       */
         }
 
-        html, body, [class*="css"] { color: var(--ink); }
-        .block-container { padding-top: 2.4rem; max-width: 1180px; }
+        html, body, [class*="css"],
+        .stApp, [data-testid="stAppViewContainer"], [data-testid="stSidebar"],
+        button, input, select, textarea, table, th, td,
+        .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+        .stCaption, label, .stRadio, .stSelectbox, .stSlider, .stCheckbox,
+        .stAlert, [data-testid="stExpander"], [data-testid="stTable"],
+        [data-testid="stDataFrame"], [data-testid="stJson"] {
+            font-family: "Fira Sans", -apple-system, "Segoe UI", Roboto, sans-serif !important;
+        }
+        html, body, [class*="css"] { color: var(--text); }
+        .block-container { padding-top: 2rem; max-width: 1220px; }
 
-        /* ---- typography: serif display headings, sans body, mono numbers ---- */
+        /* numeric widgets (sliders, number inputs, dataframes, json) read as data -> mono */
+        input[type="number"], [data-testid="stSlider"] [data-testid="stTickBar"],
+        [data-testid="stSlider"] div[role="slider"],
+        [data-testid="stDataFrame"] *, [data-testid="stJson"] *, .stTable table {
+            font-family: "Fira Code", "Consolas", monospace !important;
+        }
+
+        /* ---- typography: sans headings, mono numbers ---- */
         h1, h2, h3, h4 {
-            font-family: Georgia, "Times New Roman", serif;
+            font-family: "Fira Sans", -apple-system, "Segoe UI", sans-serif;
             color: var(--ink);
-            font-weight: 600;
+            font-weight: 700;
             letter-spacing: -0.01em;
         }
-        h1 { font-size: 2.1rem; line-height: 1.15; }
-        .stMarkdown p, .stMarkdown li, label, .stCaption {
-            font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        h1 { font-size: 2.15rem; line-height: 1.15; }
+
+        /* ---- title rule: solid blue heading with a clean underline ---- */
+        h1 {
+            padding-bottom: 0.6rem;
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+            display: inline-block;
         }
 
-        /* ---- title rule: a thin line under the H1, like a paper masthead ---- */
-        h1 { padding-bottom: 0.5rem; border-bottom: 2px solid var(--ink); }
-
-        /* ---- section headers: small-caps label + hairline rule ---- */
+        /* ---- section headers: bold label + accent-colored index number ---- */
         h2 {
-            font-size: 1.15rem;
-            text-transform: none;
-            margin-top: 2.2rem;
-            padding-bottom: 0.35rem;
-            border-bottom: 1px solid var(--rule-2);
+            font-size: 1.2rem;
+            margin-top: 2.4rem;
+            padding: 0.5rem 0.9rem;
+            background: var(--card);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 6px 6px 0;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
 
-        /* ---- metrics: flat, ruled tiles; VALUES in monospace ---- */
+        /* ---- metrics: elevated cards, blue labels, mono values ---- */
         [data-testid="stMetric"] {
-            background: var(--paper);
-            border: none;
-            border-top: 1px solid var(--rule);
-            border-radius: 0;
-            padding: 0.7rem 0.9rem 0.7rem 0;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            box-shadow: 0 1px 3px rgba(30, 64, 175, 0.06);
         }
         [data-testid="stMetricValue"] {
-            font-family: "SF Mono", "Consolas", "Liberation Mono", monospace;
+            font-family: "Fira Code", "Consolas", monospace;
             font-weight: 600;
-            color: var(--ink);
+            color: var(--primary);
+            font-size: 1.5rem;
         }
         [data-testid="stMetricLabel"] {
             color: var(--muted);
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
+            font-weight: 600;
         }
-        [data-testid="stMetricDelta"] { font-family: "SF Mono","Consolas",monospace; }
+        [data-testid="stMetricDelta"] { font-family: "Fira Code","Consolas",monospace; }
 
-        /* ---- primary button: solid ink, square, no gradient/shadow ---- */
+        /* ---- primary button: solid blue, amber on hover for energy ---- */
         .stButton > button[kind="primary"] {
-            background: var(--ink);
-            color: var(--paper);
-            border: 1px solid var(--ink);
-            border-radius: 3px;
+            background: var(--primary);
+            color: #ffffff;
+            border: 1px solid var(--primary);
+            border-radius: 8px;
             font-weight: 600;
             letter-spacing: 0.02em;
-            box-shadow: none;
+            box-shadow: 0 1px 3px rgba(30, 64, 175, 0.25);
+            transition: background 150ms ease, box-shadow 150ms ease;
         }
         .stButton > button[kind="primary"]:hover {
-            background: #000; color: #fff;
+            background: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
         }
 
-        /* ---- headline result: a bordered "figure box", not a gradient hero -- */
+        /* ---- headline result: amber-tinted hero, the one "wow" moment ---- */
         .figbox {
-            border: 1px solid var(--rule-2);
-            border-left: 3px solid var(--ink);
-            background: var(--panel);
-            padding: 1rem 1.3rem;
-            margin: 0.6rem 0 1.4rem 0;
+            border: 1px solid #FDE68A;
+            border-left: 5px solid var(--accent);
+            background: var(--accent-bg);
+            border-radius: 0 10px 10px 0;
+            padding: 1.1rem 1.4rem;
+            margin: 0.6rem 0 1.6rem 0;
+            box-shadow: 0 2px 10px rgba(217, 119, 6, 0.10);
         }
         .figbox .label {
             font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
-            color: var(--muted);
-            font-family: -apple-system,"Segoe UI",Roboto,sans-serif;
+            color: #92400E; font-weight: 600;
         }
         .figbox .stat {
-            font-family: "SF Mono","Consolas","Liberation Mono",monospace;
-            font-size: 1.9rem; font-weight: 600; color: var(--ink);
-            line-height: 1.25; margin-top: 0.2rem;
+            font-family: "Fira Code","Consolas",monospace;
+            font-size: 2.1rem; font-weight: 700; color: #92400E;
+            line-height: 1.25; margin-top: 0.25rem;
         }
         .figbox .sub {
-            color: var(--muted); font-size: 0.9rem; margin-top: 0.15rem;
-            font-family: -apple-system,"Segoe UI",Roboto,sans-serif;
+            color: #78716C; font-size: 0.92rem; margin-top: 0.2rem;
         }
 
         /* ---- landing stat cards (outcome at a glance, no prose) ---- */
         .statcard {
-            border: 1px solid var(--rule);
-            border-top: 3px solid var(--ink);
-            padding: 1.1rem 1.2rem 1rem;
+            border: 1px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 0 0 10px 10px;
+            background: var(--card);
+            padding: 1.2rem 1.3rem 1.1rem;
             height: 100%;
+            box-shadow: 0 1px 4px rgba(30, 64, 175, 0.06);
         }
         .statcard .num {
-            font-family: "SF Mono","Consolas","Liberation Mono",monospace;
-            font-size: 2.2rem; font-weight: 600; color: var(--ink); line-height: 1;
+            font-family: "Fira Code","Consolas",monospace;
+            font-size: 2.3rem; font-weight: 700; color: var(--primary); line-height: 1;
         }
         .statcard .cap {
             font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em;
-            color: var(--muted); margin-top: 0.5rem;
-            font-family: -apple-system,"Segoe UI",Roboto,sans-serif;
+            color: var(--muted); margin-top: 0.55rem; font-weight: 600;
         }
 
-        /* ---- compact zone table (Swiss ruled) ---- */
+        /* ---- compact zone table ---- */
         table.zones { width: 100%; border-collapse: collapse; margin-top: 0.2rem; }
         table.zones th, table.zones td {
-            text-align: left; padding: 0.5rem 0.4rem;
-            border-bottom: 1px solid var(--rule);
-            font-family: -apple-system,"Segoe UI",Roboto,sans-serif; font-size: 0.9rem;
+            text-align: left; padding: 0.55rem 0.5rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
         }
         table.zones th {
             font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
-            color: var(--muted); border-bottom: 1px solid var(--rule-2);
+            color: var(--muted); border-bottom: 2px solid var(--border-2);
         }
         table.zones td.cell {
-            font-family: "SF Mono","Consolas",monospace; text-align: right;
-            font-weight: 600;
+            font-family: "Fira Code","Consolas",monospace; text-align: right;
+            font-weight: 600; color: var(--primary);
         }
         table.zones td.dist { color: var(--muted); }
 
-        /* ---- plotly charts: no card frame, just a hairline top rule ---- */
+        /* ---- plotly charts: card container with a soft shadow ---- */
         [data-testid="stPlotlyChart"] {
-            border-top: 1px solid var(--rule);
-            padding-top: 0.5rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem;
+            box-shadow: 0 1px 4px rgba(30, 64, 175, 0.05);
         }
 
-        /* ---- sidebar: paper with a hairline divider ---- */
+        /* ---- expanders: card styling to match metrics/charts ---- */
+        [data-testid="stExpander"] {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card);
+        }
+
+        /* ---- sidebar: deep blue-tinted panel ---- */
         [data-testid="stSidebar"] {
-            background: var(--panel);
-            border-right: 1px solid var(--rule-2);
+            background: #EFF6FF;
+            border-right: 1px solid var(--border-2);
         }
         /* --- trim the large default whitespace at the top of the sidebar --- */
-        /* the header row that only holds the collapse (<<) button */
         [data-testid="stSidebarHeader"] {
             padding-top: 0.25rem !important;
             padding-bottom: 0 !important;
             height: auto !important;
             min-height: 0 !important;
         }
-        /* the content wrapper + its inner block container */
         [data-testid="stSidebarUserContent"] { padding-top: 0 !important; }
         [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
             padding-top: 0 !important;
@@ -199,23 +240,26 @@ def inject_css() -> None:
         [data-testid="stSidebar"] .block-container {
             padding-top: 0.25rem !important;
         }
-        /* collapse any empty leading spacer blocks Streamlit injects */
         [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:empty {
             display: none !important;
         }
         /* compact sidebar title + section subheads */
         .side-title {
-            font-family: Georgia, "Times New Roman", serif;
-            font-size: 1.35rem; font-weight: 600; color: var(--ink);
-            padding-bottom: 0.35rem; margin-bottom: 0.6rem;
-            border-bottom: 2px solid var(--ink);
+            font-size: 1.3rem; font-weight: 700; color: var(--ink);
+            padding-bottom: 0.4rem; margin-bottom: 0.7rem;
+            border-bottom: 3px solid var(--primary);
         }
         [data-testid="stSidebar"] h3 {
-            font-size: 1rem; margin-top: 1.1rem; margin-bottom: 0.2rem;
+            font-size: 0.95rem; margin-top: 1.2rem; margin-bottom: 0.3rem;
+            color: var(--primary);
         }
 
         /* mono for inline "frame name" style code */
-        code { font-family: "SF Mono","Consolas",monospace; background: var(--panel); }
+        code {
+            font-family: "Fira Code","Consolas",monospace;
+            background: var(--border); color: var(--ink);
+            border-radius: 4px;
+        }
         </style>
         """,
         unsafe_allow_html=True,

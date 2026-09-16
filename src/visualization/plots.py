@@ -25,29 +25,33 @@ CLASS_COLORS = {
     "unknown": "#7f7f7f",         # gray
 }
 
-# Dashboard design tokens -- "Clean light / report" (Swiss / minimalist).
-_INK = "#1a1a1a"                 # near-black text
-_MUTED = "#6b6b6b"               # axis labels
-_GRID = "rgba(0,0,0,0.06)"       # faint hairline grid
-_PANEL = "rgba(0,0,0,0)"         # transparent so it sits on white paper
+# Dashboard design tokens -- "Data-Dense Dashboard" (blue/amber analytics).
+_INK = "#1E3A8A"                 # deep blue text / titles
+_MUTED = "#475569"               # axis labels
+_GRID = "rgba(30,64,175,0.08)"   # faint blue-tinted grid
+_PANEL = "rgba(0,0,0,0)"         # transparent so it sits on the card background
+_ACCENT = "#D97706"              # amber -- reserved for the headline series
 
 
 def _apply_theme(fig):
-    """Apply a clean light 'report' template (white paper, hairline grid, ink text)."""
+    """Apply the blue/amber dashboard template (light card, blue-tinted grid)."""
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor=_PANEL,
         plot_bgcolor=_PANEL,
         font=dict(color=_INK, size=13,
-                  family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"),
-        title_font=dict(color=_INK, size=15, family="Georgia, Times New Roman, serif"),
+                  family="Fira Sans, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"),
+        title_font=dict(color=_INK, size=15, family="Fira Sans, -apple-system, Segoe UI, sans-serif"),
         legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=_MUTED)),
+        colorway=["#1E40AF", "#D97706", "#3B82F6", "#059669", "#7C3AED", "#DC2626"],
     )
     # 2D axes (ignored harmlessly by 3D scenes)
     fig.update_xaxes(gridcolor=_GRID, zerolinecolor=_GRID,
-                     linecolor="#cfccc5", tickfont=dict(color=_MUTED))
+                     linecolor="#BFDBFE", tickfont=dict(color=_MUTED,
+                     family="Fira Code, Consolas, monospace"))
     fig.update_yaxes(gridcolor=_GRID, zerolinecolor=_GRID,
-                     linecolor="#cfccc5", tickfont=dict(color=_MUTED))
+                     linecolor="#BFDBFE", tickfont=dict(color=_MUTED,
+                     family="Fira Code, Consolas, monospace"))
     return fig
 
 
@@ -225,15 +229,16 @@ def plot_grid_map(
 def plot_resolution_zones(policy, title: str = "Foveated resolution zones"):
     """Filled concentric bands illustrating distance-adaptive resolution.
 
-    Report palette: a single ink hue, darkest (dense) near the sensor and
-    fading outward (coarse) -- so the 'fovea' idea reads at a glance.
+    Blue/amber palette: the innermost (highest-resolution) zone is amber to
+    draw the eye to the "fovea", outer zones fade through blue -- so the
+    adaptive-resolution idea reads at a glance.
     """
     import plotly.graph_objects as go
 
     theta = np.linspace(0, 2 * np.pi, 240)
-    # Ink with decreasing opacity outward: near = solid, very-far = faint.
-    fills = ["rgba(26,26,26,0.85)", "rgba(26,26,26,0.55)",
-             "rgba(26,26,26,0.30)", "rgba(26,26,26,0.14)"]
+    # Near = amber (the fovea, highest detail); farther zones fade to blue.
+    fills = ["rgba(217,119,6,0.55)", "rgba(30,64,175,0.45)",
+             "rgba(30,64,175,0.25)", "rgba(30,64,175,0.10)"]
     fig = go.Figure()
     # Draw largest ring first so inner (denser) rings paint on top.
     for zi in range(len(policy.zones) - 1, -1, -1):
@@ -242,23 +247,24 @@ def plot_resolution_zones(policy, title: str = "Foveated resolution zones"):
             x=z.r_hi * np.cos(theta), y=z.r_hi * np.sin(theta),
             mode="lines", fill="toself",
             fillcolor=fills[zi % len(fills)],
-            line=dict(color="rgba(26,26,26,0.9)", width=1),
+            line=dict(color="rgba(30,64,175,0.9)", width=1),
             name=f"{z.name} · {z.r_lo:g}–{z.r_hi:g} m · {z.resolution*100:g} cm",
             hoverinfo="name",
         ))
     # Sensor / vehicle marker at the origin.
     fig.add_trace(go.Scatter(
         x=[0], y=[0], mode="markers+text",
-        marker=dict(color="#ffffff", size=9, line=dict(color="#1a1a1a", width=2)),
+        marker=dict(color="#ffffff", size=9, line=dict(color="#1E40AF", width=2)),
         text=["vehicle"], textposition="top center",
-        textfont=dict(color="#1a1a1a", size=11), showlegend=False, hoverinfo="skip",
+        textfont=dict(color="#1E3A8A", size=11), showlegend=False, hoverinfo="skip",
     ))
     fig.update_layout(
         title=title,
         xaxis_title="x (m)", yaxis_title="y (m)",
         yaxis=dict(scaleanchor="x", scaleratio=1),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.18, x=0),
-        margin=dict(l=0, r=0, t=40, b=0),
+        legend=dict(orientation="h", yanchor="top", y=-0.28, x=0.5, xanchor="center",
+                    entrywidth=260, entrywidthmode="pixels"),
+        margin=dict(l=0, r=0, t=40, b=110),
     )
     return _apply_theme(fig)
 
@@ -279,8 +285,8 @@ def plot_comparison_bars(benchmark, title: str = "Uniform vs Foveated"):
     # grouped bar per metric via facets. Keep it simple: 3 small bar charts.
     from plotly.subplots import make_subplots
 
-    # Swiss/report palette: uniform = muted gray (baseline), foveated = ink.
-    uni_color, fov_color = "#c9c6bf", "#1a1a1a"
+    # Blue/amber palette: uniform = light blue (baseline), foveated = amber (the win).
+    uni_color, fov_color = "#93C5FD", "#D97706"
     fig = make_subplots(rows=1, cols=3, subplot_titles=metrics)
     for i, (uv, fv) in enumerate(zip(uni_vals, fov_vals), start=1):
         fig.add_trace(go.Bar(x=["uniform"], y=[uv], marker_color=uni_color,
