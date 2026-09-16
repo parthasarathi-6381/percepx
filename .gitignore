@@ -34,10 +34,10 @@ ENV/
 Thumbs.db
 
 # ---- Project data (large / generated) ----
-# KITTI .bin frames and any raw point clouds are NOT committed.
-data/raw/*
+# A small KITTI demo subset (data/raw/*.bin) IS committed so teammates get
+# real frames on `git pull` with no manual download step. Processed outputs
+# are still regenerated locally and excluded.
 data/processed/*
-!data/raw/.gitkeep
 !data/processed/.gitkeep
 
 # Live environmental-sensor snapshot/history written by the serial bridge.
